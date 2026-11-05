@@ -1,0 +1,11 @@
+# Läuft auf dem vServer unter /opt/brainimox/compose.yml
+# (wird von GitHub Actions bei jedem Deploy aktualisiert).
+# Nur lokal erreichbar (127.0.0.1), nach außen spricht nur Caddy.
+services:
+  app:
+    image: ${IMAGE}:production
+    environment:
+      APP_ENV: production
+    ports:
+      - "127.0.0.1:3002:3000"
+    restart: unless-stopped

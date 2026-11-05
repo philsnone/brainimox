@@ -1,0 +1,85 @@
+# Bei jedem Push auf "main": Image bauen, nach ghcr.io laden und direkt
+# auf brainimox.pschau.de starten. Keine Test-Stufe.
+# Rollback: Actions -> "Deploy" -> "Run workflow" -> älteren Commit-SHA eintragen.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Älteren Commit-SHA (voll, 40 Zeichen) erneut live bringen. Leer = aktuellen main neu bauen."
+        required: false
+        default: ""
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image-Namen festlegen (ghcr.io verlangt Kleinbuchstaben)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Bei ghcr.io anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image bauen und hochladen
+        if: ${{ !inputs.sha }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:production
+
+      - uses: docker/setup-buildx-action@v3
+        if: ${{ inputs.sha }}
+
+      - name: Rollback - älteres Image als "production" markieren
+        if: ${{ inputs.sha }}
+        run: docker buildx imagetools create -t "$IMAGE:production" "$IMAGE:${{ inputs.sha }}"
+
+      - name: SSH vorbereiten
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: compose.yml auf den Server kopieren
+        run: scp deploy/compose.yml "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/brainimox/compose.yml"
+
+      - name: App auf dem Server aktualisieren
+        run: |
+          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<EOF
+            set -e
+            cd /opt/brainimox
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            export IMAGE="${IMAGE}"
+            docker compose pull app
+            docker compose up -d app
+            docker image prune -f
+            docker logout ghcr.io
+          EOF
+
+      - name: Smoke-Test
+        run: |
+          sleep 5
+          curl -fsS --retry 5 --retry-delay 3 "${{ vars.PRODUCTION_URL }}/health"
