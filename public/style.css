@@ -1,0 +1,78 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #7ec8ff;
+  font-family: "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas { display: block; width: 100vw; height: 100vh; }
+
+.schicht {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 40, 80, 0.55);
+  color: #fff;
+  text-align: center;
+  font-size: 5vmin;
+}
+.versteckt { display: none; }
+h1 { font-size: 12vmin; margin: 0 0 2vmin; text-shadow: 0 0.6vmin 0 #234; }
+p { margin: 1vmin; }
+.klein { font-size: 3.5vmin; opacity: 0.85; }
+.frage { font-size: 11vmin; font-weight: bold; text-shadow: 0 0.6vmin 0 #234; }
+.meldung { min-height: 7vmin; font-size: 6vmin; font-weight: bold; }
+
+.knoepfe { display: flex; gap: 4vmin; margin: 3vmin 0; flex-wrap: wrap; justify-content: center; }
+button.gross {
+  font: inherit;
+  font-size: 8vmin;
+  font-weight: bold;
+  min-width: 24vmin;
+  padding: 2vmin 5vmin;
+  border: none;
+  border-radius: 4vmin;
+  background: #ffd23f;
+  color: #333;
+  box-shadow: 0 1.2vmin 0 #c79a00;
+  cursor: pointer;
+}
+button.gross:active { transform: translateY(1vmin); box-shadow: 0 0.2vmin 0 #c79a00; }
+button.richtig { background: #6fdc6f; box-shadow: 0 1.2vmin 0 #2f9a2f; }
+button.falsch { background: #ff7b7b; box-shadow: 0 1.2vmin 0 #b83b3b; }
+
+#vollbild {
+  position: fixed;
+  top: 2vmin;
+  right: 2vmin;
+  width: 11vmin;
+  height: 11vmin;
+  font-size: 7vmin;
+  border: none;
+  border-radius: 2vmin;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+#drehen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #234;
+  color: #fff;
+  font-size: 7vmin;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 5vmin;
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  #drehen { display: flex; }
+}

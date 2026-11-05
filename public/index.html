@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#7ec8ff">
+  <title>Brainimox</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="spiel"></canvas>
+
+  <!-- Startbildschirm -->
+  <div id="start" class="schicht">
+    <h1>Brainimox</h1>
+    <p>Welche Klasse bist du?</p>
+    <div class="knoepfe">
+      <button class="gross" data-klasse="3">Klasse 3</button>
+      <button class="gross" data-klasse="4">Klasse 4</button>
+    </div>
+    <p class="klein">Tippen oder Leertaste = Springen</p>
+  </div>
+
+  <!-- Matheaufgabe -->
+  <div id="aufgabe" class="schicht versteckt">
+    <p class="frage" id="frage"></p>
+    <div class="knoepfe" id="antworten"></div>
+    <p class="meldung" id="meldung"></p>
+  </div>
+
+  <!-- Ende -->
+  <div id="ende" class="schicht versteckt">
+    <h1>Geschafft!</h1>
+    <p id="ergebnis"></p>
+    <div class="knoepfe">
+      <button class="gross" id="nochmal">Nochmal</button>
+    </div>
+  </div>
+
+  <button id="vollbild" title="Vollbild">⛶</button>
+  <div id="drehen">Bitte dreh das Gerät quer 🔄</div>
+
+  <script src="game.js"></script>
+</body>
+</html>
