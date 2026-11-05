@@ -18,7 +18,7 @@
       <button class="gross" data-klasse="3">Klasse 3</button>
       <button class="gross" data-klasse="4">Klasse 4</button>
     </div>
-    <p class="klein">Tippen oder Leertaste = Springen</p>
+    <p class="klein">Tippen oder Leertaste = Springen · P = Pause</p>
   </div>
 
   <!-- Matheaufgabe -->
@@ -37,8 +37,17 @@
     </div>
   </div>
 
-  <button id="vollbild" title="Vollbild">⛶</button>
-  <div id="drehen">Bitte dreh das Gerät quer 🔄</div>
+  <!-- Pause -->
+  <div id="pause" class="schicht versteckt">
+    <h1>Pause</h1>
+    <div class="knoepfe">
+      <button class="gross" id="weiter">Weiter ▶</button>
+    </div>
+    <button class="klein-knopf" id="abbrechen">Zurück zum Start</button>
+  </div>
+
+  <button id="pauseknopf" class="ecke versteckt" title="Pause">⏸</button>
+  <button id="vollbild" class="ecke" title="Vollbild">⛶</button>
 
   <script src="game.js"></script>
 </body>

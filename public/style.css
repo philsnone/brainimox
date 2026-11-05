@@ -48,31 +48,32 @@ button.gross:active { transform: translateY(1vmin); box-shadow: 0 0.2vmin 0 #c79
 button.richtig { background: #6fdc6f; box-shadow: 0 1.2vmin 0 #2f9a2f; }
 button.falsch { background: #ff7b7b; box-shadow: 0 1.2vmin 0 #b83b3b; }
 
-#vollbild {
+.ecke {
   position: fixed;
   top: 2vmin;
-  right: 2vmin;
   width: 11vmin;
   height: 11vmin;
   font-size: 7vmin;
+  line-height: 1;
+  padding: 0;
   border: none;
   border-radius: 2vmin;
   background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
+  z-index: 2;
 }
+#vollbild { right: 2vmin; }
+#pauseknopf { right: 15vmin; }
+.ecke.versteckt { display: none; }
 
-#drehen {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: #234;
+.klein-knopf {
+  font: inherit;
+  font-size: 4.5vmin;
+  margin-top: 2vmin;
+  padding: 1.5vmin 4vmin;
+  border: 0.5vmin solid #fff;
+  border-radius: 3vmin;
+  background: transparent;
   color: #fff;
-  font-size: 7vmin;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 5vmin;
-}
-@media (orientation: portrait) and (max-width: 700px) {
-  #drehen { display: flex; }
+  cursor: pointer;
 }

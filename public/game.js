@@ -29,6 +29,8 @@ const H = 450;            // Spielwelt ist immer 450 hoch
 const BODEN = 370;        // hier ist der Boden
 let W = 800;              // Breite hängt vom Bildschirm ab
 let skala = 1;
+let obenRand = 0;         // Platz über der Spielwelt (wenn das Gerät hochkant ist)
+const MIN_BREITE = 520;   // so viel vom Level sieht man mindestens nebeneinander
 
 const startSchicht = document.getElementById("start");
 const aufgabeSchicht = document.getElementById("aufgabe");
@@ -42,8 +44,11 @@ function groesseAnpassen() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(window.innerWidth * dpr);
   canvas.height = Math.round(window.innerHeight * dpr);
-  skala = canvas.height / H;
+  // Quer: Höhe füllt den Bildschirm. Hochkant: Breite füllt den Bildschirm,
+  // damit man trotzdem genug vom Weg vor sich sieht.
+  skala = Math.min(canvas.height / H, canvas.width / MIN_BREITE);
   W = canvas.width / skala;
+  obenRand = (canvas.height / skala - H) * 0.6;
 }
 window.addEventListener("resize", groesseAnpassen);
 groesseAnpassen();
@@ -90,7 +95,8 @@ function neuesSpiel() {
     amBoden: true,
     muenzen: 0,
     autschZeit: 0,
-    pause: false,
+    pause: false,         // Pause wegen Matheaufgabe
+    angehalten: false,    // Pause-Knopf gedrückt
     fertig: false,
     texte: [],            // kleine fliegende Texte wie "+1"
   };
@@ -98,7 +104,7 @@ function neuesSpiel() {
 
 // ---------- Steuerung ----------
 function springen() {
-  if (!spiel || spiel.pause || spiel.fertig) return;
+  if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   if (spiel.amBoden) {
     spiel.vy = -EINSTELLUNGEN.sprungKraft;
     spiel.amBoden = false;
@@ -109,6 +115,7 @@ canvas.addEventListener("pointerdown", (e) => {
   springen();
 });
 window.addEventListener("keydown", (e) => {
+  if (["KeyP", "Escape"].includes(e.code)) return pauseUmschalten();
   if (["Space", "ArrowUp", "KeyW"].includes(e.code)) {
     e.preventDefault();
     springen();
@@ -122,6 +129,27 @@ document.querySelectorAll("[data-klasse]").forEach((knopf) => {
     neuesSpiel();
   });
 });
+// ---------- Pause ----------
+const pauseKnopf = document.getElementById("pauseknopf");
+const pauseSchicht = document.getElementById("pause");
+function pauseUmschalten() {
+  if (!spiel || spiel.fertig) return;
+  spiel.angehalten = !spiel.angehalten;
+  pauseSchicht.classList.toggle("versteckt", !spiel.angehalten);
+}
+pauseKnopf.addEventListener("click", pauseUmschalten);
+document.getElementById("weiter").addEventListener("click", pauseUmschalten);
+document.getElementById("abbrechen").addEventListener("click", () => {
+  pauseSchicht.classList.add("versteckt");
+  aufgabeSchicht.classList.add("versteckt");
+  startSchicht.classList.remove("versteckt");
+  spiel = null;
+});
+// Wenn man die App verlässt (z. B. Home-Taste), automatisch Pause machen
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && spiel && !spiel.angehalten && !spiel.fertig) pauseUmschalten();
+});
+
 document.getElementById("nochmal").addEventListener("click", () => {
   endeSchicht.classList.add("versteckt");
   startSchicht.classList.remove("versteckt");
@@ -166,7 +194,8 @@ function aufgabeMachen() {
 }
 
 function aufgabeZeigen() {
-  spiel.pause = true;
+  const dieses = spiel;
+  dieses.pause = true;
   const a = aufgabeMachen();
   document.getElementById("frage").textContent = `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
@@ -184,14 +213,15 @@ function aufgabeZeigen() {
       if (zahl === a.loesung) {
         knopf.classList.add("richtig");
         meldung.textContent = `Super! +${EINSTELLUNGEN.bonusMuenzen} Münzen`;
-        spiel.muenzen += EINSTELLUNGEN.bonusMuenzen;
+        dieses.muenzen += EINSTELLUNGEN.bonusMuenzen;
       } else {
         knopf.classList.add("falsch");
         meldung.textContent = `Fast! Richtig ist ${a.loesung}`;
       }
       setTimeout(() => {
+        if (spiel !== dieses) return; // Spiel wurde inzwischen abgebrochen
         aufgabeSchicht.classList.add("versteckt");
-        spiel.pause = false;
+        dieses.pause = false;
       }, 1500);
     });
     box.appendChild(knopf);
@@ -202,7 +232,8 @@ function aufgabeZeigen() {
 // ---------- Spiel-Logik ----------
 const MANN_X = 160;       // wo das Männchen auf dem Bildschirm steht
 function aktualisieren(dt) {
-  if (!spiel || spiel.pause || spiel.fertig) return;
+  pauseKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
+  if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
   s.x += EINSTELLUNGEN.tempo * dt;
   s.vy += EINSTELLUNGEN.schwerkraft * dt;
@@ -267,7 +298,11 @@ function malen() {
   const F = EINSTELLUNGEN.farben;
   ctx.setTransform(skala, 0, 0, skala, 0, 0);
   ctx.fillStyle = F.himmel;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, canvas.height / skala);
+  // Erde bis ganz nach unten (wichtig, wenn das Gerät hochkant ist)
+  ctx.fillStyle = F.erde;
+  ctx.fillRect(0, obenRand + BODEN, W, canvas.height / skala);
+  ctx.translate(0, obenRand);
 
   const kamera = spiel ? spiel.x - MANN_X : (performance.now() / 1000) * 60;
   const sx = (welt) => welt - kamera;
@@ -359,7 +394,8 @@ function malen() {
     ctx.fillText(t.text, sx(t.x), t.y);
   }
 
-  // Anzeige oben: Münzen und Weg bis zum Ziel
+  // Anzeige oben: Münzen und Weg bis zum Ziel (immer ganz oben am Bildschirm)
+  ctx.setTransform(skala, 0, 0, skala, 0, 0);
   ctx.textAlign = "left";
   ctx.font = "bold 30px sans-serif";
   ctx.fillStyle = F.muenze;
