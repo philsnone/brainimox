@@ -4,9 +4,10 @@
 // =====================================================================
 const EINSTELLUNGEN = {
   tempo: 230,             // wie schnell das Männchen läuft
-  sprungKraft: 880,       // wie hoch es springt, wenn man lange drückt
-  kurzerSprung: 0.7,      // kurz tippen = kleiner Sprung (0.7 = 70 % der Kraft)
-  fragezeichenHoehe: 240, // wie hoch die ?-Blöcke in der Luft hängen
+  sprungKraft: 620,       // wie hoch der kleine Sprung ist (kurz tippen)
+  haltenZeit: 0.4,        // so lange (Sekunden) hilft langes Drücken beim Hochfliegen
+  haltenSchwerkraft: 0.25,// beim Drücken ist die Schwerkraft schwächer (0.25 = ein Viertel)
+  fragezeichenHoehe: 290, // wie hoch die ?-Blöcke in der Luft hängen
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
   levelSekunden: 50,      // wie lange das Level ungefähr dauert
   aufgaben: 3,            // wie viele Matheaufgaben im Level
@@ -16,7 +17,12 @@ const EINSTELLUNGEN = {
     himmel: "#7ec8ff",
     boden: "#5bbf4a",
     erde: "#a8743a",
-    maennchen: "#222",
+    // Spielfigur
+    haare: "#ff8c1a",     // orange
+    tshirt: "#2f6fdb",    // blau
+    hose: "#2e8b3a",      // grün
+    haut: "#ffd2a8",
+    schuhe: "#333",
     kiste: "#c98b3c",
     muenze: "#ffd23f",
   },
@@ -110,14 +116,14 @@ function springen() {
   if (spiel.amBoden) {
     spiel.vy = -EINSTELLUNGEN.sprungKraft;
     spiel.amBoden = false;
+    spiel.halten = true;
+    spiel.haltZeit = 0;
   }
 }
-// Loslassen: Wenn das Männchen noch nach oben fliegt, wird der Sprung kürzer.
+// Solange man gedrückt hält, zieht die Schwerkraft schwächer und der Junge fliegt höher.
 // So gilt: kurz drücken = kleiner Sprung, lange drücken = großer Sprung.
 function loslassen() {
-  if (!spiel) return;
-  const kleinsterSchwung = EINSTELLUNGEN.sprungKraft * EINSTELLUNGEN.kurzerSprung;
-  if (spiel.vy < -kleinsterSchwung) spiel.vy = -kleinsterSchwung;
+  if (spiel) spiel.halten = false;
 }
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
@@ -250,7 +256,12 @@ function aktualisieren(dt) {
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
   s.x += EINSTELLUNGEN.tempo * dt;
-  s.vy += EINSTELLUNGEN.schwerkraft * dt;
+  let schwerkraft = EINSTELLUNGEN.schwerkraft;
+  if (s.halten && s.vy < 0 && s.haltZeit < EINSTELLUNGEN.haltenZeit) {
+    schwerkraft *= EINSTELLUNGEN.haltenSchwerkraft;
+    s.haltZeit += dt;
+  }
+  s.vy += schwerkraft * dt;
   s.y += s.vy * dt;
   if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; }
   if (s.autschZeit > 0) s.autschZeit -= dt;
@@ -301,21 +312,81 @@ function aktualisieren(dt) {
 }
 
 // ---------- Malen ----------
-function strichmaennchen(x, y, lauf, inLuft, blinkt) {
-  if (blinkt) return;
-  ctx.strokeStyle = EINSTELLUNGEN.farben.maennchen;
-  ctx.lineWidth = 5;
+function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
+  // Arm oder Bein: zwei Stücke (oben + unten), z. B. Ärmel und Hand
   ctx.lineCap = "round";
-  const schwung = inLuft ? 0.6 : Math.sin(lauf) * 0.7;
-  const huefte = y - 32, schulter = y - 55;
+  ctx.lineJoin = "round";
+  ctx.lineWidth = dicke;
+  ctx.strokeStyle = farbe1;
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.strokeStyle = farbe2;
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke();
+}
+
+function spielfigur(x, y, lauf, inLuft, blinkt) {
+  if (blinkt) return;
+  const F = EINSTELLUNGEN.farben;
+  const s = inLuft ? 0.9 : Math.sin(lauf);        // Schwung von Armen und Beinen
+  const huefte = y - 28, schulter = y - 50;
+
+  const bein = (w, farbeSchuh) => {
+    const knieX = x + Math.sin(w) * 11, knieY = huefte + 12;
+    const fussX = knieX + Math.sin(w - 0.6) * 9, fussY = Math.min(y - 3, knieY + 13);
+    glied(x, huefte, knieX, knieY, fussX, fussY, F.hose, F.hose, 8);
+    ctx.fillStyle = farbeSchuh;
+    ctx.beginPath(); ctx.ellipse(fussX + 3, fussY + 1, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  const arm = (w) => {
+    const ellX = x + Math.sin(w) * 9, ellY = schulter + 11;
+    const handX = ellX + 5 + Math.sin(w) * 3, handY = ellY + 9;
+    glied(x, schulter + 2, ellX, ellY, handX, handY, F.tshirt, F.haut, 6);
+    ctx.fillStyle = F.haut;
+    ctx.beginPath(); ctx.arc(handX, handY, 3.5, 0, Math.PI * 2); ctx.fill();
+  };
+
+  // hinterer Arm und hinteres Bein (etwas dunkler, weil sie hinten sind)
+  ctx.filter = "brightness(0.8)";
+  arm(-s * 0.9);
+  bein(-s * 0.8, F.schuhe);
+  ctx.filter = "none";
+
+  // T-Shirt (Körper)
+  ctx.fillStyle = F.tshirt;
   ctx.beginPath();
-  ctx.arc(x, y - 63, 9, 0, Math.PI * 2);              // Kopf
-  ctx.moveTo(x, y - 54); ctx.lineTo(x, huefte);        // Körper
-  ctx.moveTo(x, huefte); ctx.lineTo(x + Math.sin(schwung) * 22, y);    // Bein 1
-  ctx.moveTo(x, huefte); ctx.lineTo(x - Math.sin(schwung) * 22, y);    // Bein 2
-  ctx.moveTo(x, schulter + 4); ctx.lineTo(x - Math.sin(schwung) * 18, schulter + 22); // Arm 1
-  ctx.moveTo(x, schulter + 4); ctx.lineTo(x + Math.sin(schwung) * 18, schulter + 22); // Arm 2
-  ctx.stroke();
+  ctx.roundRect(x - 9, schulter - 3, 18, huefte - schulter + 6, 6);
+  ctx.fill();
+
+  bein(s * 0.8, F.schuhe);
+
+  // Kopf
+  const kopfY = y - 61;
+  ctx.fillStyle = F.haut;
+  ctx.beginPath(); ctx.arc(x + 1, kopfY, 10, 0, Math.PI * 2); ctx.fill();
+  // Haare (oben und hinten am Kopf, ein bisschen strubbelig)
+  ctx.fillStyle = F.haare;
+  ctx.beginPath();
+  ctx.arc(x, kopfY - 1, 10.5, Math.PI * 0.95, Math.PI * 2.05);
+  ctx.lineTo(x + 9, kopfY - 4);
+  ctx.lineTo(x + 2, kopfY - 6);
+  ctx.lineTo(x - 4, kopfY - 3);
+  ctx.lineTo(x - 9, kopfY + 5);
+  ctx.closePath();
+  ctx.fill();
+  for (const [dx, dy] of [[-7, -9], [-2, -12], [4, -11]]) {
+    ctx.beginPath();
+    ctx.moveTo(x + dx - 3, kopfY - 7);
+    ctx.lineTo(x + dx, kopfY + dy - 4);
+    ctx.lineTo(x + dx + 4, kopfY - 7);
+    ctx.fill();
+  }
+  // Auge und Mund
+  ctx.fillStyle = "#222";
+  ctx.beginPath(); ctx.arc(x + 5, kopfY + 1, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#222";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x + 5, kopfY + 4, 3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+
+  arm(s * 0.9);
 }
 
 function malen() {
@@ -416,7 +487,7 @@ function malen() {
 
   // Männchen
   const blinkt = spiel.autschZeit > 0 && Math.floor(spiel.autschZeit * 10) % 2 === 0;
-  strichmaennchen(MANN_X, spiel.y, spiel.x / 18, !spiel.amBoden, blinkt);
+  spielfigur(MANN_X, spiel.y, spiel.x / 18, !spiel.amBoden, blinkt);
 
   // Fliegende Texte
   ctx.font = "bold 24px sans-serif";
