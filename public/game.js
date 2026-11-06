@@ -24,13 +24,17 @@ const EINSTELLUNGEN = {
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
   // schneemaenner: true = Schneemänner statt Kisten
   // drachen = wie viele Drachen im Level kommen
+  // berge, huegel = Farben der Berge und Hügel im Hintergrund
   level: [
     { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9, drachen: 1,
-      himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
+      himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)",
+      berge: "#a9d8c0", huegel: "#7cc96a" },
     { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true,
-      himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
+      himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)",
+      berge: "#b6dcb0", huegel: "#95dd6c" },
     { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
-      himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
+      himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)",
+      berge: "#8fa9c8", huegel: "#dce8f4" },
   ],
   farben: {
     // Spielfigur
@@ -50,10 +54,9 @@ const EINSTELLUNGEN = {
 //  Ab hier kommt die Technik
 // ---------------------------------------------------------------------
 const canvas = document.getElementById("spiel");
-const ctx = canvas.getContext("2d");
 const H = 450;            // Spielwelt ist immer 450 hoch
 const BODEN = 370;        // hier ist der Boden
-let W = 800;              // Breite hängt vom Bildschirm ab
+let W = 800;              // Breite hängt vom Bildschirm ab (rechnet grafik.js aus)
 let skala = 1;
 let obenRand = 0;         // Platz über der Spielwelt (wenn das Gerät hochkant ist)
 const MIN_BREITE = 520;   // so viel vom Level sieht man mindestens nebeneinander
@@ -64,21 +67,6 @@ const endeSchicht = document.getElementById("ende");
 
 let spiel = null;         // aktueller Spielstand
 let klasse = 3;
-let letzteZeit = 0;
-
-function groesseAnpassen() {
-  // Mehr als 2-fache Pixeldichte sieht man nicht, kostet aber viel Rechenzeit
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(window.innerWidth * dpr);
-  canvas.height = Math.round(window.innerHeight * dpr);
-  // Quer: Höhe füllt den Bildschirm. Hochkant: Breite füllt den Bildschirm,
-  // damit man trotzdem genug vom Weg vor sich sieht.
-  skala = Math.min(canvas.height / H, canvas.width / MIN_BREITE);
-  W = canvas.width / skala;
-  obenRand = (canvas.height / skala - H) * 0.6;
-}
-window.addEventListener("resize", groesseAnpassen);
-groesseAnpassen();
 
 // ---------- Level bauen ----------
 function levelBauen(L) {
@@ -368,6 +356,7 @@ function aktualisieren(dt) {
     if (!m.weg && Math.abs(m.x - s.x) < 28 && m.y > oben - 14 && m.y < s.y + 14) {
       m.weg = true;
       s.muenzen++;
+      effekt("muenze", m.x, m.y);
       s.texte.push({ text: "+1", x: m.x, y: m.y, zeit: 0.7 });
     }
   }
@@ -391,6 +380,7 @@ function aktualisieren(dt) {
     if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf) continue;
     if (s.vy > 0 && s.y < kopf + 24) {
       m.lebt = false;
+      effekt("monster", m.x, kopf);
       s.vy = -450;            // kleiner Hüpfer nach dem Draufspringen
       s.amBoden = false;
       s.halten = false;
@@ -452,6 +442,7 @@ function aktualisieren(dt) {
       k.y = k.zy + (d.sy - k.zy) * Math.min(1, k.t);
       if (k.t >= 1) {
         d.zustand = "besiegt"; d.fall = 0;
+        effekt("drache", s.x - MANN_X + d.sx, d.sy);
         s.muenzen += EINSTELLUNGEN.drachenBesiegtMuenzen;
         s.texte.push({ text: `+${EINSTELLUNGEN.drachenBesiegtMuenzen} Drache besiegt!`, x: s.x - MANN_X + d.sx, y: d.sy - 30, zeit: 1.5 });
       }
@@ -503,469 +494,4 @@ function aktualisieren(dt) {
   }
 }
 
-// ---------- Malen ----------
-function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
-  // Arm oder Bein: zwei Stücke (oben + unten), z. B. Ärmel und Hand
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = dicke;
-  ctx.strokeStyle = farbe1;
-  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-  ctx.strokeStyle = farbe2;
-  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke();
-}
-
-// Schneemann: steht auf dem Boden, man muss drüberspringen
-function zeichneSchneemann(x) {
-  const kugel = (y, r) => {
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  };
-  ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "#9fb4c8";
-  ctx.lineWidth = 2;
-  kugel(BODEN - 16, 17);          // Bauch
-  kugel(BODEN - 42, 12);          // Kopf
-  // Knöpfe
-  ctx.fillStyle = "#333";
-  for (const y of [BODEN - 22, BODEN - 12]) { ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill(); }
-  // Augen
-  ctx.beginPath(); ctx.arc(x - 4, BODEN - 45, 1.8, 0, Math.PI * 2); ctx.arc(x + 4, BODEN - 45, 1.8, 0, Math.PI * 2); ctx.fill();
-  // Karottennase (zeigt nach links, zum Jungen)
-  ctx.fillStyle = "#ff8c1a";
-  ctx.beginPath(); ctx.moveTo(x, BODEN - 42); ctx.lineTo(x - 12, BODEN - 40); ctx.lineTo(x, BODEN - 38); ctx.fill();
-  // Hut
-  ctx.fillStyle = "#333";
-  ctx.fillRect(x - 11, BODEN - 54, 22, 3);
-  ctx.fillRect(x - 7, BODEN - 66, 14, 12);
-  ctx.fillStyle = "#d33";
-  ctx.fillRect(x - 7, BODEN - 57, 14, 3);
-  // Schal
-  ctx.fillStyle = "#d33";
-  ctx.fillRect(x - 10, BODEN - 32, 20, 4);
-  ctx.fillRect(x + 4, BODEN - 32, 4, 11);
-}
-
-// Drache: fliegt, schlägt mit den Flügeln, schaut nach links zu dir
-function zeichneDrache(x, y, zeit) {
-  const F = EINSTELLUNGEN.farben;
-  const schlag = Math.sin(zeit * 9);
-  ctx.save();
-  ctx.translate(x, y + Math.sin(zeit * 3) * 6);
-  ctx.fillStyle = F.drache;
-  ctx.strokeStyle = "#7a1010";
-  ctx.lineWidth = 2;
-  // Flügel hinten
-  ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(25, -30 - schlag * 22); ctx.lineTo(40, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Schwanz
-  ctx.beginPath(); ctx.moveTo(25, 4); ctx.quadraticCurveTo(55, 0, 62, -14); ctx.lineTo(56, 2); ctx.quadraticCurveTo(50, 14, 22, 12); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#ffd23f";
-  ctx.beginPath(); ctx.moveTo(62, -14); ctx.lineTo(70, -16); ctx.lineTo(64, -6); ctx.fill();
-  // Körper
-  ctx.fillStyle = F.drache;
-  ctx.beginPath(); ctx.ellipse(8, 2, 28, 15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  // Bauch
-  ctx.fillStyle = "#ffcf70";
-  ctx.beginPath(); ctx.ellipse(6, 8, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
-  // Hals und Kopf
-  ctx.fillStyle = F.drache;
-  ctx.beginPath(); ctx.ellipse(-24, -12, 16, 12, -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-34, -14); ctx.lineTo(-52, -8); ctx.lineTo(-50, 0); ctx.lineTo(-30, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Hörner
-  ctx.fillStyle = "#ffd23f";
-  ctx.beginPath(); ctx.moveTo(-20, -22); ctx.lineTo(-14, -36); ctx.lineTo(-12, -20); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-28, -22); ctx.lineTo(-26, -34); ctx.lineTo(-20, -22); ctx.fill();
-  // Auge
-  ctx.fillStyle = "#fff";
-  ctx.beginPath(); ctx.arc(-28, -15, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#222";
-  ctx.beginPath(); ctx.arc(-29.5, -15, 2.2, 0, Math.PI * 2); ctx.fill();
-  // Flügel vorne
-  ctx.fillStyle = "#b51f1f";
-  ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(14, -38 - schlag * 26); ctx.lineTo(30, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.restore();
-}
-
-// Feuerkugel mit Matheaufgabe drauf
-function zeichneKugel(k) {
-  ctx.save();
-  ctx.fillStyle = "rgba(255,140,0,0.45)";
-  for (let i = 1; i <= 3; i++) {
-    ctx.beginPath(); ctx.arc(k.x + i * 14, k.y - i * 2, 16 - i * 3, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = "#ff7b00";
-  ctx.strokeStyle = "#c23b00";
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(k.x, k.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.font = "bold 18px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = "#234";
-  ctx.fillStyle = "#fff";
-  ctx.strokeText(k.aufgabe.text, k.x, k.y - 28);
-  ctx.fillText(k.aufgabe.text, k.x, k.y - 28);
-  ctx.restore();
-}
-
-// Schwert in der Hand. hauZeit > 0: wird gerade geschwungen (von oben nach vorne-unten)
-function zeichneSchwert(x, y, hauZeit) {
-  const winkel = hauZeit > 0 ? -1.6 + (1 - hauZeit / 0.35) * 2.6 : -0.5;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(winkel);
-  // Klinge
-  ctx.fillStyle = "#dfe8f0";
-  ctx.strokeStyle = "#7d8b99";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(-3, -6); ctx.lineTo(-3, -40); ctx.lineTo(0, -47); ctx.lineTo(3, -40); ctx.lineTo(3, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Griff und Parierstange
-  ctx.fillStyle = "#ffd23f";
-  ctx.fillRect(-9, -7, 18, 4);
-  ctx.fillStyle = "#7a4e1a";
-  ctx.fillRect(-2.5, -3, 5, 10);
-  ctx.restore();
-  if (hauZeit > 0) {
-    // Schwung-Streifen
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y, 50, -1.6 - Math.PI / 2 + 0.2, winkel - Math.PI / 2); ctx.stroke();
-  }
-}
-
-function zeichneMonster(x, m, zeit) {
-  const F = EINSTELLUNGEN.farben;
-  ctx.save();
-  ctx.translate(x, BODEN);
-  if (!m.lebt) {
-    // umfallen: nach hinten kippen und verschwinden
-    ctx.globalAlpha = Math.max(0, 1 - m.umfallen / 1.2);
-    ctx.rotate(Math.min(1, m.umfallen * 3) * Math.PI / 2);
-  }
-  const b = m.b, h = m.h;
-  // Füße (wackeln beim Laufen)
-  const wackeln = m.lebt ? Math.sin(zeit / 12) * 4 : 0;
-  ctx.fillStyle = "#4a235a";
-  ctx.beginPath(); ctx.ellipse(-9 + wackeln, -3, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(9 - wackeln, -3, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
-  // Körper
-  ctx.fillStyle = F.monster;
-  ctx.beginPath();
-  ctx.moveTo(-b / 2, -4);
-  ctx.lineTo(-b / 2, -h + b / 2);
-  ctx.arc(0, -h + b / 2, b / 2, Math.PI, 0);
-  ctx.lineTo(b / 2, -4);
-  ctx.closePath();
-  ctx.fill();
-  // Hörnchen
-  ctx.beginPath();
-  ctx.moveTo(-12, -h + 4); ctx.lineTo(-15, -h - 8); ctx.lineTo(-5, -h + 1);
-  ctx.moveTo(12, -h + 4); ctx.lineTo(15, -h - 8); ctx.lineTo(5, -h + 1);
-  ctx.fill();
-  // Augen (schauen nach links, zum Spieler)
-  ctx.fillStyle = "#fff";
-  ctx.beginPath(); ctx.arc(-8, -h + 17, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(6, -h + 17, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#222";
-  if (m.lebt) {
-    ctx.beginPath(); ctx.arc(-10, -h + 18, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(4, -h + 18, 2.5, 0, Math.PI * 2); ctx.fill();
-  } else {
-    // X-Augen
-    ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
-    for (const ax of [-8, 6]) {
-      ctx.beginPath();
-      ctx.moveTo(ax - 3, -h + 14); ctx.lineTo(ax + 3, -h + 20);
-      ctx.moveTo(ax + 3, -h + 14); ctx.lineTo(ax - 3, -h + 20);
-      ctx.stroke();
-    }
-  }
-  // Mund mit Zähnen
-  ctx.fillStyle = "#2c0f3a";
-  ctx.fillRect(-11, -h + 27, 20, 6);
-  ctx.fillStyle = "#fff";
-  for (const zx of [-9, -3, 3]) {
-    ctx.beginPath(); ctx.moveTo(zx, -h + 27); ctx.lineTo(zx + 4, -h + 27); ctx.lineTo(zx + 2, -h + 31); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// Macht eine Farbe etwas dunkler (wie brightness(0.8)), für Arm und Bein hinten.
-// Wird nur einmal pro Farbe ausgerechnet. (ctx.filter wäre auf vielen Geräten sehr langsam.)
-const dunkleFarben = {};
-function dunkler(farbe) {
-  if (!dunkleFarben[farbe]) {
-    let h = farbe.slice(1);
-    if (h.length === 3) h = h.replace(/./g, "$&$&");
-    const teil = (i) => Math.round(parseInt(h.slice(i, i + 2), 16) * 0.8);
-    dunkleFarben[farbe] = `rgb(${teil(0)},${teil(2)},${teil(4)})`;
-  }
-  return dunkleFarben[farbe];
-}
-
-function spielfigur(x, y, lauf, inLuft, blinkt) {
-  if (blinkt) return;
-  const F = EINSTELLUNGEN.farben;
-  const s = inLuft ? 0.9 : Math.sin(lauf);        // Schwung von Armen und Beinen
-  const huefte = y - 28, schulter = y - 50;
-
-  const bein = (w, hinten) => {
-    const hose = hinten ? dunkler(F.hose) : F.hose;
-    const knieX = x + Math.sin(w) * 11, knieY = huefte + 12;
-    const fussX = knieX + Math.sin(w - 0.6) * 9, fussY = Math.min(y - 3, knieY + 13);
-    glied(x, huefte, knieX, knieY, fussX, fussY, hose, hose, 8);
-    ctx.fillStyle = hinten ? dunkler(F.schuhe) : F.schuhe;
-    ctx.beginPath(); ctx.ellipse(fussX + 3, fussY + 1, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  };
-  const arm = (w, hinten) => {
-    const tshirt = hinten ? dunkler(F.tshirt) : F.tshirt, haut = hinten ? dunkler(F.haut) : F.haut;
-    const ellX = x + Math.sin(w) * 9, ellY = schulter + 11;
-    const handX = ellX + 5 + Math.sin(w) * 3, handY = ellY + 9;
-    glied(x, schulter + 2, ellX, ellY, handX, handY, tshirt, haut, 6);
-    ctx.fillStyle = haut;
-    ctx.beginPath(); ctx.arc(handX, handY, 3.5, 0, Math.PI * 2); ctx.fill();
-  };
-
-  // hinterer Arm und hinteres Bein (etwas dunkler, weil sie hinten sind)
-  arm(-s * 0.9, true);
-  bein(-s * 0.8, true);
-
-  // T-Shirt (Körper)
-  ctx.fillStyle = F.tshirt;
-  ctx.beginPath();
-  ctx.roundRect(x - 9, schulter - 3, 18, huefte - schulter + 6, 6);
-  ctx.fill();
-
-  bein(s * 0.8, false);
-
-  // Kopf
-  const kopfY = y - 61;
-  ctx.fillStyle = F.haut;
-  ctx.beginPath(); ctx.arc(x + 1, kopfY, 10, 0, Math.PI * 2); ctx.fill();
-  // Haare (oben und hinten am Kopf, ein bisschen strubbelig)
-  ctx.fillStyle = F.haare;
-  ctx.beginPath();
-  ctx.arc(x, kopfY - 1, 10.5, Math.PI * 0.95, Math.PI * 2.05);
-  ctx.lineTo(x + 9, kopfY - 4);
-  ctx.lineTo(x + 2, kopfY - 6);
-  ctx.lineTo(x - 4, kopfY - 3);
-  ctx.lineTo(x - 9, kopfY + 5);
-  ctx.closePath();
-  ctx.fill();
-  for (const [dx, dy] of [[-7, -9], [-2, -12], [4, -11]]) {
-    ctx.beginPath();
-    ctx.moveTo(x + dx - 3, kopfY - 7);
-    ctx.lineTo(x + dx, kopfY + dy - 4);
-    ctx.lineTo(x + dx + 4, kopfY - 7);
-    ctx.fill();
-  }
-  // Auge und Mund
-  ctx.fillStyle = "#222";
-  ctx.beginPath(); ctx.arc(x + 5, kopfY + 1, 1.6, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(x + 5, kopfY + 4, 3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
-
-  arm(s * 0.9, false);
-}
-
-function malen() {
-  const F = EINSTELLUNGEN.farben;
-  const L = spiel ? spiel.L : EINSTELLUNGEN.level[0];
-  ctx.setTransform(skala, 0, 0, skala, 0, 0);
-  ctx.fillStyle = L.himmel;
-  ctx.fillRect(0, 0, W, canvas.height / skala);
-  // Erde bis ganz nach unten (wichtig, wenn das Gerät hochkant ist)
-  ctx.fillStyle = L.erde;
-  ctx.fillRect(0, obenRand + BODEN, W, canvas.height / skala);
-  ctx.translate(0, obenRand);
-
-  const kamera = spiel ? spiel.x - MANN_X : (performance.now() / 1000) * 60;
-  const sx = (welt) => welt - kamera;
-
-  // Wolken (bewegen sich langsamer = sieht weit weg aus)
-  ctx.fillStyle = L.wolken;
-  for (let i = 0; i < 12; i++) {
-    const wx = ((i * 420 - kamera * 0.3) % (W + 400) + W + 400) % (W + 400) - 200;
-    const wy = 60 + ((i * 53) % 120);
-    ctx.beginPath();
-    ctx.arc(wx, wy, 26, 0, Math.PI * 2);
-    ctx.arc(wx + 30, wy - 10, 32, 0, Math.PI * 2);
-    ctx.arc(wx + 62, wy, 24, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Boden
-  ctx.fillStyle = L.erde;
-  ctx.fillRect(0, BODEN, W, H - BODEN);
-  ctx.fillStyle = L.boden;
-  ctx.fillRect(0, BODEN, W, 16);
-
-  // Wiese: bunte Blumen auf dem Boden
-  if (L.blumen) {
-    const farbenBlumen = ["#ff5d8f", "#ffd23f", "#ffffff", "#b48cff"];
-    for (let i = 0; i < 60; i++) {
-      const bx = ((i * 97 - kamera) % (W + 100) + W + 100) % (W + 100) - 50;
-      ctx.fillStyle = "#2f8a2f";
-      ctx.fillRect(bx - 1, BODEN - 8, 2, 8);
-      ctx.fillStyle = farbenBlumen[i % farbenBlumen.length];
-      ctx.beginPath(); ctx.arc(bx, BODEN - 10, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffb000";
-      ctx.beginPath(); ctx.arc(bx, BODEN - 10, 1.5, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-  // Schnee: Schneeflocken fallen vom Himmel
-  if (L.schnee) {
-    ctx.fillStyle = "#fff";
-    const t = performance.now() / 1000;
-    for (let i = 0; i < 70; i++) {
-      const fx = ((i * 131 - kamera * 0.6 + Math.sin(t + i) * 10) % W + W) % W;
-      const fy = ((i * 53 + t * (30 + (i % 5) * 8)) % (BODEN + obenRand)) - obenRand;
-      ctx.beginPath(); ctx.arc(fx, fy, 2 + (i % 3), 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  if (!spiel) return;
-  const LV = spiel.level;
-  const sichtbar = (x) => sx(x) > -80 && sx(x) < W + 80;
-
-  // Kisten (oder Schneemänner)
-  for (const k of LV.kisten) {
-    if (!sichtbar(k.x)) continue;
-    if (L.schneemaenner) { zeichneSchneemann(sx(k.x) + k.b / 2); continue; }
-    ctx.fillStyle = F.kiste;
-    ctx.fillRect(sx(k.x), BODEN - k.h, k.b, k.h);
-    ctx.strokeStyle = "#7a4e1a";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(sx(k.x), BODEN - k.h, k.b, k.h);
-    ctx.beginPath();
-    ctx.moveTo(sx(k.x), BODEN - k.h); ctx.lineTo(sx(k.x) + k.b, BODEN);
-    ctx.moveTo(sx(k.x) + k.b, BODEN - k.h); ctx.lineTo(sx(k.x), BODEN);
-    ctx.stroke();
-  }
-
-  // Monster
-  for (const m of LV.monster) {
-    if (!sichtbar(m.x) || m.umfallen > 1.2) continue;
-    zeichneMonster(sx(m.x), m, spiel.x);
-  }
-
-  // Münzen
-  for (const m of LV.muenzen) {
-    if (m.weg || !sichtbar(m.x)) continue;
-    ctx.fillStyle = F.muenze;
-    ctx.strokeStyle = "#c79a00";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(sx(m.x), m.y, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  // Fragezeichen-Blöcke
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  for (const f of LV.fragen) {
-    if (!sichtbar(f.x)) continue;
-    const bx = sx(f.x), by = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
-    if (f.fertig) {
-      // schon benutzt oder verpasst: grauer, leerer Block
-      ctx.fillStyle = "#b5b5b5";
-      ctx.fillRect(bx - 28, by - 28, 56, 56);
-      continue;
-    }
-    ctx.fillStyle = "#ff9f1c";
-    ctx.fillRect(bx - 28, by - 28, 56, 56);
-    ctx.strokeStyle = "#c46d00";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(bx - 28, by - 28, 56, 56);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 40px sans-serif";
-    ctx.fillText("?", bx, by + 2);
-  }
-
-  // Zielfahne
-  if (sichtbar(LV.ziel)) {
-    const zx = sx(LV.ziel);
-    ctx.fillStyle = "#555";
-    ctx.fillRect(zx - 3, BODEN - 160, 6, 160);
-    ctx.fillStyle = "#e63946";
-    ctx.beginPath();
-    ctx.moveTo(zx + 3, BODEN - 160);
-    ctx.lineTo(zx + 60, BODEN - 140);
-    ctx.lineTo(zx + 3, BODEN - 120);
-    ctx.fill();
-  }
-
-  // Männchen
-  const blinkt = spiel.autschZeit > 0 && Math.floor(spiel.autschZeit * 10) % 2 === 0;
-  spielfigur(MANN_X, spiel.y, spiel.x / 18, !spiel.amBoden, blinkt);
-  if (spiel.schwert && !blinkt) zeichneSchwert(MANN_X + 9, spiel.y - 32, spiel.hauZeit);
-
-  // Drachen und ihre Aufgaben-Kugeln
-  for (const d of LV.drachen) {
-    if (d.zustand === "wartet" || d.zustand === "weg") continue;
-    if (d.zustand === "besiegt") {
-      ctx.save();
-      ctx.translate(d.sx, d.sy);
-      ctx.rotate(d.fall * 4);
-      ctx.globalAlpha = Math.max(0.2, 1 - d.fall / 2);
-      zeichneDrache(0, 0, 0);
-      ctx.restore();
-    } else {
-      zeichneDrache(d.sx, d.sy, d.zeit);
-    }
-    if (d.zustand === "schiesst" || d.zustand === "zurueck") zeichneKugel(d.kugel);
-  }
-
-  // Fliegende Texte
-  ctx.font = "bold 24px sans-serif";
-  for (const t of spiel.texte) {
-    ctx.fillStyle = t.text.startsWith("+") ? "#fff" : "#e63946";
-    ctx.fillText(t.text.replace("+0 ", ""), sx(t.x), t.y);
-  }
-
-  // Anzeige oben: Münzen und Weg bis zum Ziel (immer ganz oben am Bildschirm)
-  ctx.setTransform(skala, 0, 0, skala, 0, 0);
-  ctx.textAlign = "left";
-  ctx.font = "bold 30px sans-serif";
-  ctx.fillStyle = F.muenze;
-  ctx.beginPath();
-  ctx.arc(32, 32, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "#234";
-  ctx.lineWidth = 5;
-  ctx.strokeText(spiel.muenzen, 54, 33);
-  ctx.fillText(spiel.muenzen, 54, 33);
-
-  const balkenB = Math.min(300, W - 300), balkenX = (W - balkenB) / 2;
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.fillRect(balkenX, 22, balkenB, 16);
-  ctx.fillStyle = "#e63946";
-  ctx.fillRect(balkenX, 22, balkenB * Math.min(1, spiel.x / spiel.level.ziel), 16);
-  // Level-Name unter dem Balken
-  ctx.textAlign = "center";
-  ctx.font = "bold 18px sans-serif";
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = "#234";
-  const levelText = `Level ${spiel.levelNr + 1}: ${L.name}`;
-  ctx.strokeText(levelText, W / 2, 56);
-  ctx.fillStyle = "#fff";
-  ctx.fillText(levelText, W / 2, 56);
-  // Am Anfang vom Level groß in der Mitte
-  if (spiel.x < L.tempo * 2) {
-    ctx.font = "bold 48px sans-serif";
-    ctx.lineWidth = 7;
-    ctx.strokeText(levelText, W / 2, 150 + obenRand);
-    ctx.fillText(levelText, W / 2, 150 + obenRand);
-  }
-}
-
-function schleife(zeit) {
-  const dt = Math.min((zeit - letzteZeit) / 1000, 1 / 30);
-  letzteZeit = zeit;
-  aktualisieren(dt);
-  malen();
-  requestAnimationFrame(schleife);
-}
-requestAnimationFrame((z) => { letzteZeit = z; schleife(z); });
+// Das Malen (Grafik) steht in grafik.js. Dort läuft auch die Spiel-Schleife.
