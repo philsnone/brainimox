@@ -3,9 +3,11 @@
 //  Hier oben stehen alle Einstellungen. Zahlen ändern = Spiel ändern!
 // =====================================================================
 const EINSTELLUNGEN = {
-  sprungKraft: 620,       // wie hoch der kleine Sprung ist (kurz tippen)
-  haltenZeit: 0.4,        // so lange (Sekunden) hilft langes Drücken beim Hochfliegen
-  haltenSchwerkraft: 0.25,// beim Drücken ist die Schwerkraft schwächer (0.25 = ein Viertel)
+  sprungKraft: 480,       // wie hoch der kleine Sprung ist (kurz tippen)
+  haltenZeit: 0.55,       // so lange (Sekunden) hilft langes Drücken beim Hochfliegen
+  haltenSchwerkraft: 0.12,// beim Drücken ist die Schwerkraft schwächer (0.12 = ganz wenig)
+  // Damit gilt: je länger du drückst, desto höher – in vielen kleinen Stufen.
+  // Ungefähr: antippen 90 · 0,2 s 145 · 0,3 s 180 (reicht für ?-Block) · 0,4 s 220 · 0,6 s 270 (ganz hoch)
   fragezeichenHoehe: 290, // wie hoch die ?-Blöcke in der Luft hängen
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
   levelSekunden: 100,     // wie lange das Level ungefähr dauert
