@@ -8,4 +8,10 @@ services:
       APP_ENV: production
     ports:
       - "127.0.0.1:3002:3000"
+    volumes:
+      # Bestenliste bleibt hier gespeichert, auch wenn neu hochgeladen wird
+      - daten:/app/data
     restart: unless-stopped
+
+volumes:
+  daten:
