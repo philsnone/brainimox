@@ -12,7 +12,9 @@ const EINSTELLUNGEN = {
   levelSekunden: 50,      // wie lange das Level ungefähr dauert
   aufgaben: 3,            // wie viele Matheaufgaben im Level
   bonusMuenzen: 5,        // Münzen für eine richtige Antwort
-  autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste läuft
+  autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
+  monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
+  monsterTempo: 40,       // wie schnell die Monster auf dich zu laufen
   farben: {
     himmel: "#7ec8ff",
     boden: "#5bbf4a",
@@ -24,6 +26,7 @@ const EINSTELLUNGEN = {
     haut: "#ffd2a8",
     schuhe: "#333",
     kiste: "#c98b3c",
+    monster: "#8e44ad",   // lila
     muenze: "#ffd23f",
   },
 };
@@ -66,6 +69,7 @@ function levelBauen() {
   const laenge = EINSTELLUNGEN.tempo * EINSTELLUNGEN.levelSekunden;
   const kisten = [];
   const muenzen = [];
+  const monster = [];
   const fragen = [];
 
   for (let i = 1; i <= EINSTELLUNGEN.aufgaben; i++) {
@@ -83,6 +87,9 @@ function levelBauen() {
         for (let k = -2; k <= 2; k++) {
           muenzen.push({ x: x + 22 + k * 32, y: BODEN - 120 + Math.abs(k) * 18, weg: false });
         }
+      } else if (n % 4 === 3) {
+        // Monster
+        monster.push({ x: x + 60, b: 40, h: 38, lebt: true, umfallen: 0 });
       } else {
         // Münzreihe am Boden
         for (let k = 0; k < 4; k++) muenzen.push({ x: x + k * 40, y: BODEN - 30, weg: false });
@@ -91,7 +98,7 @@ function levelBauen() {
     n++;
     x += 380 + ((n * 137) % 260); // Abstand wechselt, ist aber jedes Mal gleich
   }
-  return { laenge, kisten, muenzen, fragen, ziel: laenge };
+  return { laenge, kisten, muenzen, monster, fragen, ziel: laenge };
 }
 
 function neuesSpiel() {
@@ -276,12 +283,30 @@ function aktualisieren(dt) {
       s.texte.push({ text: "+1", x: m.x, y: m.y, zeit: 0.7 });
     }
   }
+  const autsch = () => {
+    s.autschZeit = 1;
+    const weg = Math.min(s.muenzen, EINSTELLUNGEN.autschMuenzen);
+    s.muenzen -= weg;
+    s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
+  };
   for (const k of s.level.kisten) {
-    if (s.autschZeit <= 0 && rechts > k.x && links < k.x + k.b && s.y > BODEN - k.h + 4) {
-      s.autschZeit = 1;
-      const weg = Math.min(s.muenzen, EINSTELLUNGEN.autschMuenzen);
-      s.muenzen -= weg;
-      s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
+    if (s.autschZeit <= 0 && rechts > k.x && links < k.x + k.b && s.y > BODEN - k.h + 4) autsch();
+  }
+  // Monster: laufen auf dich zu. Von oben draufspringen = Monster fällt um!
+  for (const m of s.level.monster) {
+    if (!m.lebt) { m.umfallen += dt; continue; }
+    m.x -= EINSTELLUNGEN.monsterTempo * dt;
+    const kopf = BODEN - m.h;
+    if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf) continue;
+    if (s.vy > 0 && s.y < kopf + 24) {
+      m.lebt = false;
+      s.vy = -450;            // kleiner Hüpfer nach dem Draufspringen
+      s.amBoden = false;
+      s.halten = false;
+      s.muenzen += EINSTELLUNGEN.monsterMuenzen;
+      s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen}`, x: m.x, y: kopf - 20, zeit: 1 });
+    } else if (s.autschZeit <= 0) {
+      autsch();
     }
   }
   // ?-Blöcke hängen in der Luft: Man muss hochspringen und sie mit dem Kopf berühren
@@ -321,6 +346,63 @@ function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
   ctx.strokeStyle = farbe2;
   ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke();
+}
+
+function zeichneMonster(x, m, zeit) {
+  const F = EINSTELLUNGEN.farben;
+  ctx.save();
+  ctx.translate(x, BODEN);
+  if (!m.lebt) {
+    // umfallen: nach hinten kippen und verschwinden
+    ctx.globalAlpha = Math.max(0, 1 - m.umfallen / 1.2);
+    ctx.rotate(Math.min(1, m.umfallen * 3) * Math.PI / 2);
+  }
+  const b = m.b, h = m.h;
+  // Füße (wackeln beim Laufen)
+  const wackeln = m.lebt ? Math.sin(zeit / 12) * 4 : 0;
+  ctx.fillStyle = "#4a235a";
+  ctx.beginPath(); ctx.ellipse(-9 + wackeln, -3, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(9 - wackeln, -3, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // Körper
+  ctx.fillStyle = F.monster;
+  ctx.beginPath();
+  ctx.moveTo(-b / 2, -4);
+  ctx.lineTo(-b / 2, -h + b / 2);
+  ctx.arc(0, -h + b / 2, b / 2, Math.PI, 0);
+  ctx.lineTo(b / 2, -4);
+  ctx.closePath();
+  ctx.fill();
+  // Hörnchen
+  ctx.beginPath();
+  ctx.moveTo(-12, -h + 4); ctx.lineTo(-15, -h - 8); ctx.lineTo(-5, -h + 1);
+  ctx.moveTo(12, -h + 4); ctx.lineTo(15, -h - 8); ctx.lineTo(5, -h + 1);
+  ctx.fill();
+  // Augen (schauen nach links, zum Spieler)
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(-8, -h + 17, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(6, -h + 17, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#222";
+  if (m.lebt) {
+    ctx.beginPath(); ctx.arc(-10, -h + 18, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4, -h + 18, 2.5, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // X-Augen
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
+    for (const ax of [-8, 6]) {
+      ctx.beginPath();
+      ctx.moveTo(ax - 3, -h + 14); ctx.lineTo(ax + 3, -h + 20);
+      ctx.moveTo(ax + 3, -h + 14); ctx.lineTo(ax - 3, -h + 20);
+      ctx.stroke();
+    }
+  }
+  // Mund mit Zähnen
+  ctx.fillStyle = "#2c0f3a";
+  ctx.fillRect(-11, -h + 27, 20, 6);
+  ctx.fillStyle = "#fff";
+  for (const zx of [-9, -3, 3]) {
+    ctx.beginPath(); ctx.moveTo(zx, -h + 27); ctx.lineTo(zx + 4, -h + 27); ctx.lineTo(zx + 2, -h + 31); ctx.fill();
+  }
+  ctx.restore();
 }
 
 function spielfigur(x, y, lauf, inLuft, blinkt) {
@@ -436,6 +518,12 @@ function malen() {
     ctx.moveTo(sx(k.x), BODEN - k.h); ctx.lineTo(sx(k.x) + k.b, BODEN);
     ctx.moveTo(sx(k.x) + k.b, BODEN - k.h); ctx.lineTo(sx(k.x), BODEN);
     ctx.stroke();
+  }
+
+  // Monster
+  for (const m of L.monster) {
+    if (!sichtbar(m.x) || m.umfallen > 1.2) continue;
+    zeichneMonster(sx(m.x), m, spiel.x);
   }
 
   // Münzen
