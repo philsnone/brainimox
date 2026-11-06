@@ -15,13 +15,13 @@ const EINSTELLUNGEN = {
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
-  // monster = wie viele Monster (0 = keine, 1 = ganz viele)
+  // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
   level: [
-    { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.5,
+    { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9,
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
-    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 0.75, blumen: true,
+    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, blumen: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
-    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1, schnee: true,
+    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, schnee: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
   ],
   farben: {
@@ -92,6 +92,8 @@ function levelBauen(L) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
         kisten.push({ x, b: 44, h: 44 });
+        // ab "monster" über 1: manchmal noch ein Monster hinter der Kiste
+        if (zufallFest(n + 100) < L.monster - 1) monster.push({ x: x + 230, b: 40, h: 38, lebt: true, umfallen: 0 });
         for (let k = -2; k <= 2; k++) {
           muenzen.push({ x: x + 22 + k * 32, y: BODEN - 120 + Math.abs(k) * 18, weg: false });
         }
