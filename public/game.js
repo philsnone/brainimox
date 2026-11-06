@@ -16,12 +16,13 @@ const EINSTELLUNGEN = {
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
+  // schneemaenner: true = Schneemänner statt Kisten
   level: [
     { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9,
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
     { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, blumen: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
-    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, schnee: true,
+    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, schnee: true, schneemaenner: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
   ],
   farben: {
@@ -380,6 +381,36 @@ function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
   ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke();
 }
 
+// Schneemann: steht auf dem Boden, man muss drüberspringen
+function zeichneSchneemann(x) {
+  const kugel = (y, r) => {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  };
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "#9fb4c8";
+  ctx.lineWidth = 2;
+  kugel(BODEN - 16, 17);          // Bauch
+  kugel(BODEN - 42, 12);          // Kopf
+  // Knöpfe
+  ctx.fillStyle = "#333";
+  for (const y of [BODEN - 22, BODEN - 12]) { ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill(); }
+  // Augen
+  ctx.beginPath(); ctx.arc(x - 4, BODEN - 45, 1.8, 0, Math.PI * 2); ctx.arc(x + 4, BODEN - 45, 1.8, 0, Math.PI * 2); ctx.fill();
+  // Karottennase (zeigt nach links, zum Jungen)
+  ctx.fillStyle = "#ff8c1a";
+  ctx.beginPath(); ctx.moveTo(x, BODEN - 42); ctx.lineTo(x - 12, BODEN - 40); ctx.lineTo(x, BODEN - 38); ctx.fill();
+  // Hut
+  ctx.fillStyle = "#333";
+  ctx.fillRect(x - 11, BODEN - 54, 22, 3);
+  ctx.fillRect(x - 7, BODEN - 66, 14, 12);
+  ctx.fillStyle = "#d33";
+  ctx.fillRect(x - 7, BODEN - 57, 14, 3);
+  // Schal
+  ctx.fillStyle = "#d33";
+  ctx.fillRect(x - 10, BODEN - 32, 20, 4);
+  ctx.fillRect(x + 4, BODEN - 32, 4, 11);
+}
+
 function zeichneMonster(x, m, zeit) {
   const F = EINSTELLUNGEN.farben;
   ctx.save();
@@ -563,9 +594,10 @@ function malen() {
   const LV = spiel.level;
   const sichtbar = (x) => sx(x) > -80 && sx(x) < W + 80;
 
-  // Kisten
+  // Kisten (oder Schneemänner)
   for (const k of LV.kisten) {
     if (!sichtbar(k.x)) continue;
+    if (L.schneemaenner) { zeichneSchneemann(sx(k.x) + k.b / 2); continue; }
     ctx.fillStyle = F.kiste;
     ctx.fillRect(sx(k.x), BODEN - k.h, k.b, k.h);
     ctx.strokeStyle = "#7a4e1a";
