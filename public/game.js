@@ -387,6 +387,13 @@ function aktualisieren(dt) {
     if (!m.lebt) { m.umfallen += dt; continue; }
     m.x -= s.L.monsterTempo * dt;
     const kopf = BODEN - m.h;
+    // Schwert: Monster direkt vor dir wird umgehauen
+    if (s.hauZeit > 0 && m.x - m.b / 2 < rechts + 55 && m.x + m.b / 2 > links && s.y > kopf - 40) {
+      m.lebt = false;
+      s.muenzen += EINSTELLUNGEN.monsterMuenzen;
+      s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen} Zack!`, x: m.x, y: kopf - 20, zeit: 1 });
+      continue;
+    }
     if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf) continue;
     if (s.vy > 0 && s.y < kopf + 24) {
       m.lebt = false;
