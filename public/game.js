@@ -16,6 +16,8 @@ const EINSTELLUNGEN = {
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
+  schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
+  drachenBesiegtMuenzen: 100, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
@@ -128,7 +130,7 @@ function levelBauen(L) {
   return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
 }
 
-function neuesSpiel(levelNr = 0, muenzen = 0) {
+function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false) {
   const L = EINSTELLUNGEN.level[levelNr];
   spiel = {
     levelNr,
@@ -139,6 +141,8 @@ function neuesSpiel(levelNr = 0, muenzen = 0) {
     vy: 0,
     amBoden: true,
     muenzen,              // Münzen aus dem letzten Level nimmt man mit
+    schwert,              // Schwert gekauft? (behält man fürs nächste Level)
+    hauZeit: 0,           // > 0: der Junge schwingt gerade das Schwert
     autschZeit: 0,
     pause: false,         // Pause wegen Matheaufgabe
     angehalten: false,    // Pause-Knopf gedrückt
@@ -162,6 +166,13 @@ function springen() {
 function loslassen() {
   if (spiel) spiel.halten = false;
 }
+// Schwert schwingen (nur wenn man eins gekauft hat)
+function hauen() {
+  if (!spiel || !spiel.schwert || spiel.pause || spiel.angehalten || spiel.fertig) return;
+  if (spiel.hauZeit <= 0) spiel.hauZeit = 0.35;
+}
+const schwertKnopf = document.getElementById("schwertknopf");
+schwertKnopf.addEventListener("pointerdown", (e) => { e.preventDefault(); hauen(); });
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   springen();
@@ -170,6 +181,7 @@ window.addEventListener("pointerup", loslassen);
 window.addEventListener("pointercancel", loslassen);
 window.addEventListener("keydown", (e) => {
   if (["KeyP", "Escape"].includes(e.code)) return pauseUmschalten();
+  if (["KeyS", "KeyX", "Enter"].includes(e.code) && spiel && !spiel.pause) { e.preventDefault(); if (!e.repeat) hauen(); return; }
   if (["Space", "ArrowUp", "KeyW"].includes(e.code)) {
     e.preventDefault();
     if (!e.repeat) springen();
@@ -207,10 +219,35 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && spiel && !spiel.angehalten && !spiel.fertig) pauseUmschalten();
 });
 
+// ---------- Laden: Schwert kaufen ----------
+const kaufKnopf = document.getElementById("schwertKaufen");
+const ladenMeldung = document.getElementById("ladenMeldung");
+function ladenZeigen() {
+  const preis = EINSTELLUNGEN.schwertPreis;
+  const naechstes = spiel && EINSTELLUNGEN.level[spiel.levelNr + 1];
+  document.getElementById("laden").classList.toggle("versteckt", !naechstes);
+  ladenMeldung.textContent = "";
+  kaufKnopf.disabled = spiel.schwert;
+  kaufKnopf.textContent = spiel.schwert ? "⚔️ Du hast das Schwert!" : `⚔️ Schwert kaufen: ${preis} 🪙`;
+}
+kaufKnopf.addEventListener("click", () => {
+  const preis = EINSTELLUNGEN.schwertPreis;
+  if (!spiel || spiel.schwert) return;
+  if (spiel.muenzen < preis) {
+    ladenMeldung.textContent = `Du brauchst ${preis} Münzen. Dir fehlen noch ${preis - spiel.muenzen}.`;
+    return;
+  }
+  spiel.muenzen -= preis;
+  spiel.schwert = true;
+  ladenZeigen();
+  ladenMeldung.textContent = "Gekauft! Drück im Spiel den ⚔️-Knopf.";
+  document.getElementById("ergebnis").textContent = `Du hast noch ${spiel.muenzen} Münzen.`;
+});
+
 document.getElementById("nochmal").addEventListener("click", () => {
   endeSchicht.classList.add("versteckt");
   if (spiel && EINSTELLUNGEN.level[spiel.levelNr + 1]) {
-    neuesSpiel(spiel.levelNr + 1, spiel.muenzen); // nächstes Level
+    neuesSpiel(spiel.levelNr + 1, spiel.muenzen, spiel.schwert); // nächstes Level
   } else if (spiel) {
     // alle Level geschafft: Name eintippen, dann Bestenliste, dann zum Start
     const muenzen = spiel.muenzen;
@@ -308,6 +345,7 @@ function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0) {
 const MANN_X = 160;       // wo das Männchen auf dem Bildschirm steht
 function aktualisieren(dt) {
   pauseKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
+  schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
   s.x += s.L.tempo * dt;
@@ -320,6 +358,7 @@ function aktualisieren(dt) {
   s.y += s.vy * dt;
   if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; }
   if (s.autschZeit > 0) s.autschZeit -= dt;
+  if (s.hauZeit > 0) s.hauZeit -= dt;
 
   // Männchen als Kasten: Breite 30, Höhe 70
   const links = s.x - 15, rechts = s.x + 15, oben = s.y - 70;
@@ -384,6 +423,13 @@ function aktualisieren(dt) {
       // fliegt auf Bauchhöhe zu dir und dann weiter nach links
       k.x = k.ax + (MANN_X - k.ax) * k.t;
       k.y = k.ay + (BODEN - 35 - k.ay) * Math.min(1, k.t);
+      // Mit dem Schwert: Kugel ist nah genug → zurück zum Drachen hauen!
+      if (s.hauZeit > 0 && k.x > MANN_X - 20 && k.x < MANN_X + 95 && k.y > s.y - 120 && k.y < s.y + 20) {
+        d.zustand = "zurueck";
+        k.zx = k.x; k.zy = k.y; k.t = 0;
+        s.texte.push({ text: "+0 Zack! ⚔️", x: s.x, y: s.y - 100, zeit: 1 });
+        continue;
+      }
       const getroffen = Math.abs(k.x - MANN_X) < 15 + 20 && k.y > s.y - 70 - 18 && k.y < s.y + 10;
       if (getroffen) {
         d.zustand = "fliegtWeg";
@@ -397,6 +443,23 @@ function aktualisieren(dt) {
         d.zustand = "fliegtWeg";
         s.texte.push({ text: "+0 Ausgewichen!", x: s.x, y: s.y - 100, zeit: 1 });
       }
+    } else if (d.zustand === "zurueck") {
+      // Kugel fliegt zurück zum Drachen
+      const k = d.kugel;
+      k.t += dt / 0.45;
+      k.x = k.zx + (d.sx - k.zx) * Math.min(1, k.t);
+      k.y = k.zy + (d.sy - k.zy) * Math.min(1, k.t);
+      if (k.t >= 1) {
+        d.zustand = "besiegt"; d.fall = 0;
+        s.muenzen += EINSTELLUNGEN.drachenBesiegtMuenzen;
+        s.texte.push({ text: `+${EINSTELLUNGEN.drachenBesiegtMuenzen} Drache besiegt!`, x: s.x - MANN_X + d.sx, y: d.sy - 30, zeit: 1.5 });
+      }
+    } else if (d.zustand === "besiegt") {
+      // Drache trudelt nach unten und verschwindet
+      d.fall += dt;
+      d.sy += 260 * dt;
+      d.sx -= 60 * dt;
+      if (d.sy > BODEN + 80) d.zustand = "weg";
     } else if (d.zustand === "fliegtWeg") {
       d.sx += 260 * dt; d.sy -= 140 * dt;
       if (d.sx > W + 120) d.zustand = "weg";
@@ -434,6 +497,7 @@ function aktualisieren(dt) {
       document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
       document.getElementById("nochmal").textContent = "Name eintragen ✏️";
     }
+    ladenZeigen();
     setTimeout(() => endeSchicht.classList.remove("versteckt"), 600);
   }
 }
@@ -540,6 +604,31 @@ function zeichneKugel(k) {
   ctx.strokeText(k.aufgabe.text, k.x, k.y - 28);
   ctx.fillText(k.aufgabe.text, k.x, k.y - 28);
   ctx.restore();
+}
+
+// Schwert in der Hand. hauZeit > 0: wird gerade geschwungen (von oben nach vorne-unten)
+function zeichneSchwert(x, y, hauZeit) {
+  const winkel = hauZeit > 0 ? -1.6 + (1 - hauZeit / 0.35) * 2.6 : -0.5;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(winkel);
+  // Klinge
+  ctx.fillStyle = "#dfe8f0";
+  ctx.strokeStyle = "#7d8b99";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-3, -6); ctx.lineTo(-3, -40); ctx.lineTo(0, -47); ctx.lineTo(3, -40); ctx.lineTo(3, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Griff und Parierstange
+  ctx.fillStyle = "#ffd23f";
+  ctx.fillRect(-9, -7, 18, 4);
+  ctx.fillStyle = "#7a4e1a";
+  ctx.fillRect(-2.5, -3, 5, 10);
+  ctx.restore();
+  if (hauZeit > 0) {
+    // Schwung-Streifen
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y, 50, -1.6 - Math.PI / 2 + 0.2, winkel - Math.PI / 2); ctx.stroke();
+  }
 }
 
 function zeichneMonster(x, m, zeit) {
@@ -796,12 +885,22 @@ function malen() {
   // Männchen
   const blinkt = spiel.autschZeit > 0 && Math.floor(spiel.autschZeit * 10) % 2 === 0;
   spielfigur(MANN_X, spiel.y, spiel.x / 18, !spiel.amBoden, blinkt);
+  if (spiel.schwert && !blinkt) zeichneSchwert(MANN_X + 9, spiel.y - 32, spiel.hauZeit);
 
   // Drachen und ihre Aufgaben-Kugeln
   for (const d of LV.drachen) {
     if (d.zustand === "wartet" || d.zustand === "weg") continue;
-    zeichneDrache(d.sx, d.sy, d.zeit);
-    if (d.zustand === "schiesst") zeichneKugel(d.kugel);
+    if (d.zustand === "besiegt") {
+      ctx.save();
+      ctx.translate(d.sx, d.sy);
+      ctx.rotate(d.fall * 4);
+      ctx.globalAlpha = Math.max(0.2, 1 - d.fall / 2);
+      zeichneDrache(0, 0, 0);
+      ctx.restore();
+    } else {
+      zeichneDrache(d.sx, d.sy, d.zeit);
+    }
+    if (d.zustand === "schiesst" || d.zustand === "zurueck") zeichneKugel(d.kugel);
   }
 
   // Fliegende Texte

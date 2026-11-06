@@ -121,3 +121,28 @@ button.falsch { background: #ff7b7b; box-shadow: 0 1.2vmin 0 #b83b3b; }
 #tabelle th { background: #ffd23f; position: sticky; top: 0; }
 #tabelle tr:nth-child(even) td { background: rgba(0, 0, 0, 0.04); }
 #tabelle tr.ich td { background: #b8f5b8; font-weight: bold; }
+
+/* ---------- Laden und Schwert ---------- */
+.laden { margin-top: 1vmin; }
+.laden.versteckt { display: none; }
+button.kaufen { background: #ffd23f; color: #333; border-color: #c79a00; font-weight: bold; }
+button.kaufen:disabled { background: #6fdc6f; border-color: #2f9a2f; cursor: default; }
+.schwert-knopf {
+  position: fixed;
+  right: 3vmin;
+  bottom: 4vmin;
+  width: 20vmin;
+  height: 20vmin;
+  font-size: 11vmin;
+  line-height: 1;
+  padding: 0;
+  border: 0.8vmin solid #fff;
+  border-radius: 50%;
+  background: rgba(214, 40, 40, 0.85);
+  box-shadow: 0 1vmin 0 rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  z-index: 2;
+  touch-action: none;
+}
+.schwert-knopf:active { transform: translateY(0.8vmin); box-shadow: 0 0.2vmin 0 rgba(0, 0, 0, 0.25); }
+.schwert-knopf.versteckt { display: none; }
