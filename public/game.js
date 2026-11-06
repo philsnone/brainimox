@@ -13,6 +13,7 @@ const EINSTELLUNGEN = {
   bonusMuenzen: 5,        // Münzen für eine richtige Antwort
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
+  schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
@@ -92,7 +93,8 @@ function levelBauen(L) {
     if (!nahAnFrage(x)) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
-        kisten.push({ x, b: 44, h: 44 });
+        if (L.schneemaenner) kisten.push({ x, b: 44, h: 62, rand: 5, schneemann: true });
+        else kisten.push({ x, b: 44, h: 44 });
         // ab "monster" über 1: manchmal noch ein Monster hinter der Kiste
         if (zufallFest(n + 100) < L.monster - 1) monster.push({ x: x + 230, b: 40, h: 38, lebt: true, umfallen: 0 });
         for (let k = -2; k <= 2; k++) {
@@ -307,14 +309,17 @@ function aktualisieren(dt) {
       s.texte.push({ text: "+1", x: m.x, y: m.y, zeit: 0.7 });
     }
   }
-  const autsch = () => {
+  const autsch = (anzahl = EINSTELLUNGEN.autschMuenzen) => {
     s.autschZeit = 1;
-    const weg = Math.min(s.muenzen, EINSTELLUNGEN.autschMuenzen);
+    const weg = Math.min(s.muenzen, anzahl);
     s.muenzen -= weg;
     s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
   };
   for (const k of s.level.kisten) {
-    if (s.autschZeit <= 0 && rechts > k.x && links < k.x + k.b && s.y > BODEN - k.h + 4) autsch();
+    const r = k.rand || 0;
+    if (s.autschZeit <= 0 && rechts > k.x + r && links < k.x + k.b - r && s.y > BODEN - k.h + 4) {
+      autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : EINSTELLUNGEN.autschMuenzen);
+    }
   }
   // Monster: laufen auf dich zu. Von oben draufspringen = Monster fällt um!
   for (const m of s.level.monster) {
