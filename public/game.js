@@ -67,7 +67,8 @@ let klasse = 3;
 let letzteZeit = 0;
 
 function groesseAnpassen() {
-  const dpr = window.devicePixelRatio || 1;
+  // Mehr als 2-fache Pixeldichte sieht man nicht, kostet aber viel Rechenzeit
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(window.innerWidth * dpr);
   canvas.height = Math.round(window.innerHeight * dpr);
   // Quer: Höhe füllt den Bildschirm. Hochkant: Breite füllt den Bildschirm,
@@ -695,32 +696,45 @@ function zeichneMonster(x, m, zeit) {
   ctx.restore();
 }
 
+// Macht eine Farbe etwas dunkler (wie brightness(0.8)), für Arm und Bein hinten.
+// Wird nur einmal pro Farbe ausgerechnet. (ctx.filter wäre auf vielen Geräten sehr langsam.)
+const dunkleFarben = {};
+function dunkler(farbe) {
+  if (!dunkleFarben[farbe]) {
+    let h = farbe.slice(1);
+    if (h.length === 3) h = h.replace(/./g, "$&$&");
+    const teil = (i) => Math.round(parseInt(h.slice(i, i + 2), 16) * 0.8);
+    dunkleFarben[farbe] = `rgb(${teil(0)},${teil(2)},${teil(4)})`;
+  }
+  return dunkleFarben[farbe];
+}
+
 function spielfigur(x, y, lauf, inLuft, blinkt) {
   if (blinkt) return;
   const F = EINSTELLUNGEN.farben;
   const s = inLuft ? 0.9 : Math.sin(lauf);        // Schwung von Armen und Beinen
   const huefte = y - 28, schulter = y - 50;
 
-  const bein = (w, farbeSchuh) => {
+  const bein = (w, hinten) => {
+    const hose = hinten ? dunkler(F.hose) : F.hose;
     const knieX = x + Math.sin(w) * 11, knieY = huefte + 12;
     const fussX = knieX + Math.sin(w - 0.6) * 9, fussY = Math.min(y - 3, knieY + 13);
-    glied(x, huefte, knieX, knieY, fussX, fussY, F.hose, F.hose, 8);
-    ctx.fillStyle = farbeSchuh;
+    glied(x, huefte, knieX, knieY, fussX, fussY, hose, hose, 8);
+    ctx.fillStyle = hinten ? dunkler(F.schuhe) : F.schuhe;
     ctx.beginPath(); ctx.ellipse(fussX + 3, fussY + 1, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
   };
-  const arm = (w) => {
+  const arm = (w, hinten) => {
+    const tshirt = hinten ? dunkler(F.tshirt) : F.tshirt, haut = hinten ? dunkler(F.haut) : F.haut;
     const ellX = x + Math.sin(w) * 9, ellY = schulter + 11;
     const handX = ellX + 5 + Math.sin(w) * 3, handY = ellY + 9;
-    glied(x, schulter + 2, ellX, ellY, handX, handY, F.tshirt, F.haut, 6);
-    ctx.fillStyle = F.haut;
+    glied(x, schulter + 2, ellX, ellY, handX, handY, tshirt, haut, 6);
+    ctx.fillStyle = haut;
     ctx.beginPath(); ctx.arc(handX, handY, 3.5, 0, Math.PI * 2); ctx.fill();
   };
 
   // hinterer Arm und hinteres Bein (etwas dunkler, weil sie hinten sind)
-  ctx.filter = "brightness(0.8)";
-  arm(-s * 0.9);
-  bein(-s * 0.8, F.schuhe);
-  ctx.filter = "none";
+  arm(-s * 0.9, true);
+  bein(-s * 0.8, true);
 
   // T-Shirt (Körper)
   ctx.fillStyle = F.tshirt;
@@ -728,7 +742,7 @@ function spielfigur(x, y, lauf, inLuft, blinkt) {
   ctx.roundRect(x - 9, schulter - 3, 18, huefte - schulter + 6, 6);
   ctx.fill();
 
-  bein(s * 0.8, F.schuhe);
+  bein(s * 0.8, false);
 
   // Kopf
   const kopfY = y - 61;
@@ -758,7 +772,7 @@ function spielfigur(x, y, lauf, inLuft, blinkt) {
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(x + 5, kopfY + 4, 3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
 
-  arm(s * 0.9);
+  arm(s * 0.9, false);
 }
 
 function malen() {
