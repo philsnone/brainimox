@@ -1,11 +1,41 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
+const crypto = require("crypto");
 
 const port = process.env.PORT || 3000;
 const version = (process.env.GIT_SHA || "dev").slice(0, 7);
 const publicDir = path.join(__dirname, "public");
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+const types = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".woff2": "font/woff2",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".md": "text/plain; charset=utf-8",
+};
+// Dateien werden einmal gelesen und (gepackt) im Speicher gehalten.
+// So muss z. B. die Spiel-Engine (über 1 MB) nur gepackt (~300 KB) übertragen werden.
+const zwischenspeicher = new Map();
+function dateiLaden(file, fertig) {
+  if (zwischenspeicher.has(file)) return fertig(null, zwischenspeicher.get(file));
+  fs.readFile(file, (err, data) => {
+    if (err) return fertig(err);
+    const typ = types[path.extname(file)] || "application/octet-stream";
+    const packbar = /^text\/|svg/.test(typ);
+    const eintrag = {
+      data,
+      typ,
+      gzip: packbar ? zlib.gzipSync(data, { level: 9 }) : null,
+      etag: '"' + crypto.createHash("sha1").update(data).digest("base64").slice(0, 20) + '"',
+    };
+    zwischenspeicher.set(file, eintrag);
+    fertig(null, eintrag);
+  });
+}
 
 // ---------- Bestenliste ----------
 // Wird in einer Datei gespeichert. Im Container liegt /app/data auf einem Docker-Volume,
@@ -97,13 +127,30 @@ http
       res.writeHead(404);
       return res.end("Nicht gefunden");
     }
-    fs.readFile(file, (err, data) => {
+    dateiLaden(file, (err, d) => {
       if (err) {
         res.writeHead(404);
         return res.end("Nicht gefunden");
       }
-      res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-cache" });
-      res.end(data);
+      // Engine und Schrift ändern sich fast nie: länger im Browser behalten
+      const lange = url.startsWith("/vendor/") || url.startsWith("/fonts/");
+      const kopf = {
+        "Content-Type": d.typ,
+        "Cache-Control": lange ? "public, max-age=604800" : "no-cache",
+        ETag: d.etag,
+        Vary: "Accept-Encoding",
+      };
+      if (req.headers["if-none-match"] === d.etag) {
+        res.writeHead(304, kopf);
+        return res.end();
+      }
+      if (d.gzip && /\bgzip\b/.test(req.headers["accept-encoding"] || "")) {
+        kopf["Content-Encoding"] = "gzip";
+        res.writeHead(200, kopf);
+        return res.end(d.gzip);
+      }
+      res.writeHead(200, kopf);
+      res.end(d.data);
     });
   })
   .listen(port, () => console.log(`brainimox auf Port ${port}`));
