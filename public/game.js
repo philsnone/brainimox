@@ -8,8 +8,8 @@ const EINSTELLUNGEN = {
   haltenSchwerkraft: 0.25,// beim Drücken ist die Schwerkraft schwächer (0.25 = ein Viertel)
   fragezeichenHoehe: 290, // wie hoch die ?-Blöcke in der Luft hängen
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
-  levelSekunden: 50,      // wie lange das Level ungefähr dauert
-  aufgaben: 3,            // wie viele Matheaufgaben im Level
+  levelSekunden: 100,     // wie lange das Level ungefähr dauert
+  aufgaben: 5,            // wie viele Matheaufgaben im Level
   bonusMuenzen: 5,        // Münzen für eine richtige Antwort
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
@@ -117,11 +117,11 @@ function levelBauen(L) {
   }
   // Drachen kommen zwischen den ?-Blöcken
   const drachen = [];
-  const plaetze = [2.5, 1.5, 3.5, 0.6];
-  for (let i = 0; i < Math.min(L.drachen || 0, plaetze.length); i++) {
-    drachen.push({ start: (laenge * plaetze[i]) / (EINSTELLUNGEN.aufgaben + 1), zustand: "wartet" });
+  const A = EINSTELLUNGEN.aufgaben, D = Math.min(L.drachen || 0, A);
+  for (let i = 0; i < D; i++) {
+    const luecke = Math.floor(((i + 1) * (A + 1)) / (D + 1)) + 0.5; // genau zwischen zwei ?-Blöcken
+    drachen.push({ start: (laenge * luecke) / (A + 1), zustand: "wartet" });
   }
-  drachen.sort((a, b) => a.start - b.start);
   return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
 }
 
