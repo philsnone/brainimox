@@ -4,7 +4,9 @@
 // =====================================================================
 const EINSTELLUNGEN = {
   tempo: 230,             // wie schnell das Männchen läuft
-  sprungKraft: 640,       // wie hoch es springt
+  sprungKraft: 880,       // wie hoch es springt, wenn man lange drückt
+  kurzerSprung: 0.7,      // kurz tippen = kleiner Sprung (0.7 = 70 % der Kraft)
+  fragezeichenHoehe: 240, // wie hoch die ?-Blöcke in der Luft hängen
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
   levelSekunden: 50,      // wie lange das Level ungefähr dauert
   aufgaben: 3,            // wie viele Matheaufgaben im Level
@@ -110,16 +112,28 @@ function springen() {
     spiel.amBoden = false;
   }
 }
+// Loslassen: Wenn das Männchen noch nach oben fliegt, wird der Sprung kürzer.
+// So gilt: kurz drücken = kleiner Sprung, lange drücken = großer Sprung.
+function loslassen() {
+  if (!spiel) return;
+  const kleinsterSchwung = EINSTELLUNGEN.sprungKraft * EINSTELLUNGEN.kurzerSprung;
+  if (spiel.vy < -kleinsterSchwung) spiel.vy = -kleinsterSchwung;
+}
 canvas.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   springen();
 });
+window.addEventListener("pointerup", loslassen);
+window.addEventListener("pointercancel", loslassen);
 window.addEventListener("keydown", (e) => {
   if (["KeyP", "Escape"].includes(e.code)) return pauseUmschalten();
   if (["Space", "ArrowUp", "KeyW"].includes(e.code)) {
     e.preventDefault();
-    springen();
+    if (!e.repeat) springen();
   }
+});
+window.addEventListener("keyup", (e) => {
+  if (["Space", "ArrowUp", "KeyW"].includes(e.code)) loslassen();
 });
 
 document.querySelectorAll("[data-klasse]").forEach((knopf) => {
@@ -259,11 +273,21 @@ function aktualisieren(dt) {
       s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
     }
   }
+  // ?-Blöcke hängen in der Luft: Man muss hochspringen und sie mit dem Kopf berühren
+  const blockUnten = BODEN - EINSTELLUNGEN.fragezeichenHoehe + 28;
+  const blockOben = blockUnten - 56;
   for (const f of s.level.fragen) {
-    if (!f.fertig && s.x >= f.x - 20) {
+    if (f.fertig) continue;
+    if (rechts > f.x - 28 && links < f.x + 28 && oben < blockUnten && s.y > blockOben) {
       f.fertig = true;
+      s.vy = Math.max(s.vy, 0); // Kopf stößt an: nicht weiter nach oben
       aufgabeZeigen();
       return;
+    }
+    if (links > f.x + 28) {
+      f.fertig = true;
+      f.verpasst = true;
+      s.texte.push({ text: "Verpasst!", x: f.x, y: blockOben - 20, zeit: 1 });
     }
   }
   for (const t of s.texte) { t.zeit -= dt; t.y -= 40 * dt; }
@@ -359,15 +383,22 @@ function malen() {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const f of L.fragen) {
-    if (f.fertig || !sichtbar(f.x)) continue;
-    const bx = sx(f.x), by = BODEN - 140;
+    if (!sichtbar(f.x)) continue;
+    const bx = sx(f.x), by = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
+    if (f.fertig) {
+      // schon benutzt oder verpasst: grauer, leerer Block
+      ctx.fillStyle = "#b5b5b5";
+      ctx.fillRect(bx - 28, by - 28, 56, 56);
+      continue;
+    }
     ctx.fillStyle = "#ff9f1c";
     ctx.fillRect(bx - 28, by - 28, 56, 56);
+    ctx.strokeStyle = "#c46d00";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(bx - 28, by - 28, 56, 56);
     ctx.fillStyle = "#fff";
     ctx.font = "bold 40px sans-serif";
     ctx.fillText("?", bx, by + 2);
-    ctx.fillStyle = "rgba(255,159,28,0.35)";
-    ctx.fillRect(bx - 4, by + 28, 8, BODEN - by - 28);
   }
 
   // Zielfahne
@@ -390,7 +421,7 @@ function malen() {
   // Fliegende Texte
   ctx.font = "bold 24px sans-serif";
   for (const t of spiel.texte) {
-    ctx.fillStyle = t.text.startsWith("Autsch") ? "#e63946" : "#fff";
+    ctx.fillStyle = t.text.startsWith("+") ? "#fff" : "#e63946";
     ctx.fillText(t.text, sx(t.x), t.y);
   }
 
