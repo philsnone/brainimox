@@ -3,7 +3,6 @@
 //  Hier oben stehen alle Einstellungen. Zahlen ändern = Spiel ändern!
 // =====================================================================
 const EINSTELLUNGEN = {
-  tempo: 230,             // wie schnell das Männchen läuft
   sprungKraft: 620,       // wie hoch der kleine Sprung ist (kurz tippen)
   haltenZeit: 0.4,        // so lange (Sekunden) hilft langes Drücken beim Hochfliegen
   haltenSchwerkraft: 0.25,// beim Drücken ist die Schwerkraft schwächer (0.25 = ein Viertel)
@@ -14,11 +13,18 @@ const EINSTELLUNGEN = {
   bonusMuenzen: 5,        // Münzen für eine richtige Antwort
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
-  monsterTempo: 40,       // wie schnell die Monster auf dich zu laufen
+  // Die Level: Jedes ist schneller und hat mehr Monster.
+  // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
+  // monster = wie viele Monster (0 = keine, 1 = ganz viele)
+  level: [
+    { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.5,
+      himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
+    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 0.75, blumen: true,
+      himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
+    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1, schnee: true,
+      himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
+  ],
   farben: {
-    himmel: "#7ec8ff",
-    boden: "#5bbf4a",
-    erde: "#a8743a",
     // Spielfigur
     haare: "#ff8c1a",     // orange
     tshirt: "#2f6fdb",    // blau
@@ -65,8 +71,10 @@ window.addEventListener("resize", groesseAnpassen);
 groesseAnpassen();
 
 // ---------- Level bauen ----------
-function levelBauen() {
-  const laenge = EINSTELLUNGEN.tempo * EINSTELLUNGEN.levelSekunden;
+function levelBauen(L) {
+  const laenge = L.tempo * EINSTELLUNGEN.levelSekunden;
+  // Zufallszahl, die bei jedem Spiel gleich ist (damit das Level immer gleich aussieht)
+  const zufallFest = (n) => { const v = Math.sin(n * 12.9898 + L.tempo * 78.233) * 43758.5453; return v - Math.floor(v); };
   const kisten = [];
   const muenzen = [];
   const monster = [];
@@ -87,7 +95,7 @@ function levelBauen() {
         for (let k = -2; k <= 2; k++) {
           muenzen.push({ x: x + 22 + k * 32, y: BODEN - 120 + Math.abs(k) * 18, weg: false });
         }
-      } else if (n % 4 === 3) {
+      } else if (zufallFest(n) < L.monster) {
         // Monster
         monster.push({ x: x + 60, b: 40, h: 38, lebt: true, umfallen: 0 });
       } else {
@@ -101,14 +109,17 @@ function levelBauen() {
   return { laenge, kisten, muenzen, monster, fragen, ziel: laenge };
 }
 
-function neuesSpiel() {
+function neuesSpiel(levelNr = 0, muenzen = 0) {
+  const L = EINSTELLUNGEN.level[levelNr];
   spiel = {
-    level: levelBauen(),
+    levelNr,
+    L,
+    level: levelBauen(L),
     x: 0,                 // wie weit das Männchen gelaufen ist
     y: BODEN,             // Füße des Männchens
     vy: 0,
     amBoden: true,
-    muenzen: 0,
+    muenzen,              // Münzen aus dem letzten Level nimmt man mit
     autschZeit: 0,
     pause: false,         // Pause wegen Matheaufgabe
     angehalten: false,    // Pause-Knopf gedrückt
@@ -179,8 +190,12 @@ document.addEventListener("visibilitychange", () => {
 
 document.getElementById("nochmal").addEventListener("click", () => {
   endeSchicht.classList.add("versteckt");
-  startSchicht.classList.remove("versteckt");
-  spiel = null;
+  if (spiel && EINSTELLUNGEN.level[spiel.levelNr + 1]) {
+    neuesSpiel(spiel.levelNr + 1, spiel.muenzen); // nächstes Level
+  } else {
+    startSchicht.classList.remove("versteckt");
+    spiel = null;
+  }
 });
 document.getElementById("vollbild").addEventListener("click", async () => {
   try {
@@ -262,7 +277,7 @@ function aktualisieren(dt) {
   pauseKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
-  s.x += EINSTELLUNGEN.tempo * dt;
+  s.x += s.L.tempo * dt;
   let schwerkraft = EINSTELLUNGEN.schwerkraft;
   if (s.halten && s.vy < 0 && s.haltZeit < EINSTELLUNGEN.haltenZeit) {
     schwerkraft *= EINSTELLUNGEN.haltenSchwerkraft;
@@ -295,7 +310,7 @@ function aktualisieren(dt) {
   // Monster: laufen auf dich zu. Von oben draufspringen = Monster fällt um!
   for (const m of s.level.monster) {
     if (!m.lebt) { m.umfallen += dt; continue; }
-    m.x -= EINSTELLUNGEN.monsterTempo * dt;
+    m.x -= s.L.monsterTempo * dt;
     const kopf = BODEN - m.h;
     if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf) continue;
     if (s.vy > 0 && s.y < kopf + 24) {
@@ -331,7 +346,16 @@ function aktualisieren(dt) {
 
   if (s.x >= s.level.ziel) {
     s.fertig = true;
-    document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
+    const naechstes = EINSTELLUNGEN.level[s.levelNr + 1];
+    if (naechstes) {
+      document.getElementById("endeTitel").textContent = `Level ${s.levelNr + 1} geschafft!`;
+      document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen. Weiter geht's: ${naechstes.name}!`;
+      document.getElementById("nochmal").textContent = "Weiter ▶";
+    } else {
+      document.getElementById("endeTitel").textContent = "Alle Level geschafft! 🏆";
+      document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
+      document.getElementById("nochmal").textContent = "Nochmal";
+    }
     setTimeout(() => endeSchicht.classList.remove("versteckt"), 600);
   }
 }
@@ -473,11 +497,12 @@ function spielfigur(x, y, lauf, inLuft, blinkt) {
 
 function malen() {
   const F = EINSTELLUNGEN.farben;
+  const L = spiel ? spiel.L : EINSTELLUNGEN.level[0];
   ctx.setTransform(skala, 0, 0, skala, 0, 0);
-  ctx.fillStyle = F.himmel;
+  ctx.fillStyle = L.himmel;
   ctx.fillRect(0, 0, W, canvas.height / skala);
   // Erde bis ganz nach unten (wichtig, wenn das Gerät hochkant ist)
-  ctx.fillStyle = F.erde;
+  ctx.fillStyle = L.erde;
   ctx.fillRect(0, obenRand + BODEN, W, canvas.height / skala);
   ctx.translate(0, obenRand);
 
@@ -485,7 +510,7 @@ function malen() {
   const sx = (welt) => welt - kamera;
 
   // Wolken (bewegen sich langsamer = sieht weit weg aus)
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = L.wolken;
   for (let i = 0; i < 12; i++) {
     const wx = ((i * 420 - kamera * 0.3) % (W + 400) + W + 400) % (W + 400) - 200;
     const wy = 60 + ((i * 53) % 120);
@@ -497,17 +522,41 @@ function malen() {
   }
 
   // Boden
-  ctx.fillStyle = F.erde;
+  ctx.fillStyle = L.erde;
   ctx.fillRect(0, BODEN, W, H - BODEN);
-  ctx.fillStyle = F.boden;
+  ctx.fillStyle = L.boden;
   ctx.fillRect(0, BODEN, W, 16);
 
+  // Wiese: bunte Blumen auf dem Boden
+  if (L.blumen) {
+    const farbenBlumen = ["#ff5d8f", "#ffd23f", "#ffffff", "#b48cff"];
+    for (let i = 0; i < 60; i++) {
+      const bx = ((i * 97 - kamera) % (W + 100) + W + 100) % (W + 100) - 50;
+      ctx.fillStyle = "#2f8a2f";
+      ctx.fillRect(bx - 1, BODEN - 8, 2, 8);
+      ctx.fillStyle = farbenBlumen[i % farbenBlumen.length];
+      ctx.beginPath(); ctx.arc(bx, BODEN - 10, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffb000";
+      ctx.beginPath(); ctx.arc(bx, BODEN - 10, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Schnee: Schneeflocken fallen vom Himmel
+  if (L.schnee) {
+    ctx.fillStyle = "#fff";
+    const t = performance.now() / 1000;
+    for (let i = 0; i < 70; i++) {
+      const fx = ((i * 131 - kamera * 0.6 + Math.sin(t + i) * 10) % W + W) % W;
+      const fy = ((i * 53 + t * (30 + (i % 5) * 8)) % (BODEN + obenRand)) - obenRand;
+      ctx.beginPath(); ctx.arc(fx, fy, 2 + (i % 3), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   if (!spiel) return;
-  const L = spiel.level;
+  const LV = spiel.level;
   const sichtbar = (x) => sx(x) > -80 && sx(x) < W + 80;
 
   // Kisten
-  for (const k of L.kisten) {
+  for (const k of LV.kisten) {
     if (!sichtbar(k.x)) continue;
     ctx.fillStyle = F.kiste;
     ctx.fillRect(sx(k.x), BODEN - k.h, k.b, k.h);
@@ -521,13 +570,13 @@ function malen() {
   }
 
   // Monster
-  for (const m of L.monster) {
+  for (const m of LV.monster) {
     if (!sichtbar(m.x) || m.umfallen > 1.2) continue;
     zeichneMonster(sx(m.x), m, spiel.x);
   }
 
   // Münzen
-  for (const m of L.muenzen) {
+  for (const m of LV.muenzen) {
     if (m.weg || !sichtbar(m.x)) continue;
     ctx.fillStyle = F.muenze;
     ctx.strokeStyle = "#c79a00";
@@ -541,7 +590,7 @@ function malen() {
   // Fragezeichen-Blöcke
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for (const f of L.fragen) {
+  for (const f of LV.fragen) {
     if (!sichtbar(f.x)) continue;
     const bx = sx(f.x), by = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
     if (f.fertig) {
@@ -561,8 +610,8 @@ function malen() {
   }
 
   // Zielfahne
-  if (sichtbar(L.ziel)) {
-    const zx = sx(L.ziel);
+  if (sichtbar(LV.ziel)) {
+    const zx = sx(LV.ziel);
     ctx.fillStyle = "#555";
     ctx.fillRect(zx - 3, BODEN - 160, 6, 160);
     ctx.fillStyle = "#e63946";
@@ -602,7 +651,23 @@ function malen() {
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.fillRect(balkenX, 22, balkenB, 16);
   ctx.fillStyle = "#e63946";
-  ctx.fillRect(balkenX, 22, balkenB * Math.min(1, spiel.x / L.ziel), 16);
+  ctx.fillRect(balkenX, 22, balkenB * Math.min(1, spiel.x / spiel.level.ziel), 16);
+  // Level-Name unter dem Balken
+  ctx.textAlign = "center";
+  ctx.font = "bold 18px sans-serif";
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#234";
+  const levelText = `Level ${spiel.levelNr + 1}: ${L.name}`;
+  ctx.strokeText(levelText, W / 2, 56);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(levelText, W / 2, 56);
+  // Am Anfang vom Level groß in der Mitte
+  if (spiel.x < L.tempo * 2) {
+    ctx.font = "bold 48px sans-serif";
+    ctx.lineWidth = 7;
+    ctx.strokeText(levelText, W / 2, 150 + obenRand);
+    ctx.fillText(levelText, W / 2, 150 + obenRand);
+  }
 }
 
 function schleife(zeit) {
