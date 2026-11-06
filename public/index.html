@@ -19,6 +19,7 @@
       <button class="gross" data-klasse="4">Klasse 4</button>
     </div>
     <p class="klein">Tippen = Springen · Länger drücken = höher · P = Pause</p>
+    <button class="klein-knopf" id="bestenlisteKnopf">🏆 Bestenliste</button>
   </div>
 
   <!-- Matheaufgabe -->
@@ -37,6 +38,24 @@
     </div>
   </div>
 
+  <!-- Name eintippen -->
+  <div id="namen" class="schicht versteckt">
+    <p class="titel-klein">Super gespielt! <span id="namenMuenzen"></span></p>
+    <p>Wie heißt du?</p>
+    <div id="namenFeld" class="namenfeld leer"> </div>
+    <p class="meldung klein" id="namenMeldung"></p>
+    <div id="tastatur" class="tastatur"></div>
+  </div>
+
+  <!-- Bestenliste -->
+  <div id="liste" class="schicht versteckt">
+    <h1 class="titel-mittel">Bestenliste 🏆</h1>
+    <div class="tabellen-rahmen"><table id="tabelle"></table></div>
+    <div class="knoepfe">
+      <button class="gross" id="listeZurueck">OK</button>
+    </div>
+  </div>
+
   <!-- Pause -->
   <div id="pause" class="schicht versteckt">
     <h1>Pause</h1>
@@ -49,6 +68,7 @@
   <button id="pauseknopf" class="ecke versteckt" title="Pause">⏸</button>
   <button id="vollbild" class="ecke" title="Vollbild">⛶</button>
 
+  <script src="bestenliste.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

@@ -194,10 +194,16 @@ document.getElementById("nochmal").addEventListener("click", () => {
   endeSchicht.classList.add("versteckt");
   if (spiel && EINSTELLUNGEN.level[spiel.levelNr + 1]) {
     neuesSpiel(spiel.levelNr + 1, spiel.muenzen); // nächstes Level
-  } else {
-    startSchicht.classList.remove("versteckt");
+  } else if (spiel) {
+    // alle Level geschafft: Name eintippen, dann Bestenliste, dann zum Start
+    const muenzen = spiel.muenzen;
     spiel = null;
+    nameEingeben(muenzen, klasse, () => startSchicht.classList.remove("versteckt"));
   }
+});
+document.getElementById("bestenlisteKnopf").addEventListener("click", () => {
+  startSchicht.classList.add("versteckt");
+  listeZeigen(null, () => startSchicht.classList.remove("versteckt"));
 });
 document.getElementById("vollbild").addEventListener("click", async () => {
   try {
@@ -356,7 +362,7 @@ function aktualisieren(dt) {
     } else {
       document.getElementById("endeTitel").textContent = "Alle Level geschafft! 🏆";
       document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
-      document.getElementById("nochmal").textContent = "Nochmal";
+      document.getElementById("nochmal").textContent = "Name eintragen ✏️";
     }
     setTimeout(() => endeSchicht.classList.remove("versteckt"), 600);
   }

@@ -77,3 +77,47 @@ button.falsch { background: #ff7b7b; box-shadow: 0 1.2vmin 0 #b83b3b; }
   color: #fff;
   cursor: pointer;
 }
+
+/* ---------- Name eintippen ---------- */
+.titel-klein { font-size: 6vmin; font-weight: bold; margin: 0; }
+.namenfeld {
+  min-width: 50vmin;
+  min-height: 9vmin;
+  padding: 1vmin 3vmin;
+  font-size: 7vmin;
+  font-weight: bold;
+  color: #333;
+  background: #fff;
+  border-radius: 2vmin;
+  border: 0.6vmin solid #ffd23f;
+}
+.namenfeld.leer { color: #aaa; }
+.tastatur { display: flex; flex-direction: column; gap: 1.2vmin; margin-top: 1vmin; }
+.tastenreihe { display: flex; gap: 1.2vmin; justify-content: center; }
+.taste {
+  font: inherit;
+  font-size: 5vmin;
+  font-weight: bold;
+  width: 8.5vmin;
+  height: 8.5vmin;
+  max-width: 8vw;
+  padding: 0;
+  border: none;
+  border-radius: 1.5vmin;
+  background: #fff;
+  color: #333;
+  box-shadow: 0 0.6vmin 0 #9aa;
+  cursor: pointer;
+}
+.taste:active { transform: translateY(0.5vmin); box-shadow: 0 0.1vmin 0 #9aa; }
+.taste.breit { width: 30vmin; max-width: 40vw; font-size: 4.5vmin; }
+.taste.fertig { background: #6fdc6f; box-shadow: 0 0.6vmin 0 #2f9a2f; }
+
+/* ---------- Bestenliste ---------- */
+.titel-mittel { font-size: 9vmin; }
+.tabellen-rahmen { max-height: 55vh; overflow-y: auto; border-radius: 2vmin; }
+#tabelle { border-collapse: collapse; font-size: 4.5vmin; background: rgba(255, 255, 255, 0.92); color: #333; }
+#tabelle th, #tabelle td { padding: 1vmin 3vmin; text-align: left; }
+#tabelle th { background: #ffd23f; position: sticky; top: 0; }
+#tabelle tr:nth-child(even) td { background: rgba(0, 0, 0, 0.04); }
+#tabelle tr.ich td { background: #b8f5b8; font-weight: bold; }
