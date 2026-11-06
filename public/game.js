@@ -380,6 +380,7 @@ function aktualisieren(dt) {
     // Schwert: Monster direkt vor dir wird umgehauen
     if (s.hauZeit > 0 && m.x - m.b / 2 < rechts + 55 && m.x + m.b / 2 > links && s.y > kopf - 40) {
       m.lebt = false;
+      effekt("monster", m.x, kopf);
       s.muenzen += EINSTELLUNGEN.monsterMuenzen;
       s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen} Zack!`, x: m.x, y: kopf - 20, zeit: 1 });
       continue;
