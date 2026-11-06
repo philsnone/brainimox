@@ -14,16 +14,19 @@ const EINSTELLUNGEN = {
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
+  drachenMuenzen: 5,      // Münzen weg, wenn man die Drachen-Aufgabe falsch löst
+  drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
   // schneemaenner: true = Schneemänner statt Kisten
+  // drachen = wie viele Drachen im Level kommen
   level: [
-    { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9,
+    { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9, drachen: 1,
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
-    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, blumen: true,
+    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
-    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, schnee: true, schneemaenner: true,
+    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 3, schnee: true, schneemaenner: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
   ],
   farben: {
@@ -35,6 +38,7 @@ const EINSTELLUNGEN = {
     schuhe: "#333",
     kiste: "#c98b3c",
     monster: "#8e44ad",   // lila
+    drache: "#d62828",    // rot
     muenze: "#ffd23f",
   },
 };
@@ -111,7 +115,14 @@ function levelBauen(L) {
     n++;
     x += 380 + ((n * 137) % 260); // Abstand wechselt, ist aber jedes Mal gleich
   }
-  return { laenge, kisten, muenzen, monster, fragen, ziel: laenge };
+  // Drachen kommen zwischen den ?-Blöcken
+  const drachen = [];
+  const plaetze = [2.5, 1.5, 3.5, 0.6];
+  for (let i = 0; i < Math.min(L.drachen || 0, plaetze.length); i++) {
+    drachen.push({ start: (laenge * plaetze[i]) / (EINSTELLUNGEN.aufgaben + 1), zustand: "wartet" });
+  }
+  drachen.sort((a, b) => a.start - b.start);
+  return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
 }
 
 function neuesSpiel(levelNr = 0, muenzen = 0) {
@@ -246,11 +257,11 @@ function aufgabeMachen() {
   return { text, loesung, antworten: [...antworten].sort(() => Math.random() - 0.5) };
 }
 
-function aufgabeZeigen() {
+// drache = true: Aufgabe kommt vom Drachen (falsch = Münzen weg, richtig = nichts passiert)
+function aufgabeZeigen(drache = false, a = aufgabeMachen()) {
   const dieses = spiel;
   dieses.pause = true;
-  const a = aufgabeMachen();
-  document.getElementById("frage").textContent = `${a.text} = ?`;
+  document.getElementById("frage").textContent = (drache ? "🐉 " : "") + `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
   meldung.textContent = "";
   const box = document.getElementById("antworten");
@@ -263,10 +274,18 @@ function aufgabeZeigen() {
     knopf.addEventListener("click", () => {
       if (beantwortet) return;
       beantwortet = true;
-      if (zahl === a.loesung) {
+      if (zahl === a.loesung && drache) {
+        knopf.classList.add("richtig");
+        meldung.textContent = "Richtig! Der Drache fliegt weg 🐉";
+      } else if (zahl === a.loesung) {
         knopf.classList.add("richtig");
         meldung.textContent = `Super! +${EINSTELLUNGEN.bonusMuenzen} Münzen`;
         dieses.muenzen += EINSTELLUNGEN.bonusMuenzen;
+      } else if (drache) {
+        knopf.classList.add("falsch");
+        const weg = Math.min(dieses.muenzen, EINSTELLUNGEN.drachenMuenzen);
+        dieses.muenzen -= weg;
+        meldung.textContent = `Falsch! −${weg} Münzen. Richtig ist ${a.loesung}`;
       } else {
         knopf.classList.add("falsch");
         meldung.textContent = `Fast! Richtig ist ${a.loesung}`;
@@ -336,6 +355,46 @@ function aktualisieren(dt) {
       s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen}`, x: m.x, y: kopf - 20, zeit: 1 });
     } else if (s.autschZeit <= 0) {
       autsch();
+    }
+  }
+  // Drachen: fliegen von rechts rein und schießen eine Kugel mit einer Matheaufgabe auf dich.
+  // Springst du drüber, bist du ausgewichen. Trifft sie dich, musst du die Aufgabe lösen.
+  // (Drachen und Kugeln leben in Bildschirm-Koordinaten: sie fliegen mit dir mit.)
+  for (const d of s.level.drachen) {
+    if (d.zustand === "wartet") {
+      if (s.x < d.start) continue;
+      d.zustand = "kommt"; d.sx = W + 80; d.sy = 120; d.zeit = 0;
+    }
+    if (d.zustand === "weg") continue;
+    d.zeit += dt;
+    if (d.zustand === "kommt") {
+      d.sx += (W - 110 - d.sx) * Math.min(1, dt * 3);
+      if (d.zeit > 1.3) {
+        d.zustand = "schiesst";
+        const a = aufgabeMachen();
+        d.kugel = { aufgabe: a, ax: d.sx - 45, ay: d.sy + 10, t: 0 };
+        d.kugel.x = d.kugel.ax; d.kugel.y = d.kugel.ay;
+      }
+    } else if (d.zustand === "schiesst") {
+      const k = d.kugel;
+      k.t += dt / EINSTELLUNGEN.drachenFlugzeit;
+      // fliegt auf Bauchhöhe zu dir und dann weiter nach links
+      k.x = k.ax + (MANN_X - k.ax) * k.t;
+      k.y = k.ay + (BODEN - 35 - k.ay) * Math.min(1, k.t);
+      const getroffen = Math.abs(k.x - MANN_X) < 15 + 20 && k.y > s.y - 70 - 18 && k.y < s.y + 10;
+      if (getroffen) {
+        d.zustand = "fliegtWeg";
+        s.texte.push({ text: "Getroffen!", x: s.x, y: s.y - 100, zeit: 1 });
+        aufgabeZeigen(true, k.aufgabe);
+        return;
+      }
+      if (k.x < MANN_X - 60) {
+        d.zustand = "fliegtWeg";
+        s.texte.push({ text: "+0 Ausgewichen!", x: s.x, y: s.y - 100, zeit: 1 });
+      }
+    } else if (d.zustand === "fliegtWeg") {
+      d.sx += 260 * dt; d.sy -= 140 * dt;
+      if (d.sx > W + 120) d.zustand = "weg";
     }
   }
   // ?-Blöcke hängen in der Luft: Man muss hochspringen und sie mit dem Kopf berühren
@@ -414,6 +473,68 @@ function zeichneSchneemann(x) {
   ctx.fillStyle = "#d33";
   ctx.fillRect(x - 10, BODEN - 32, 20, 4);
   ctx.fillRect(x + 4, BODEN - 32, 4, 11);
+}
+
+// Drache: fliegt, schlägt mit den Flügeln, schaut nach links zu dir
+function zeichneDrache(x, y, zeit) {
+  const F = EINSTELLUNGEN.farben;
+  const schlag = Math.sin(zeit * 9);
+  ctx.save();
+  ctx.translate(x, y + Math.sin(zeit * 3) * 6);
+  ctx.fillStyle = F.drache;
+  ctx.strokeStyle = "#7a1010";
+  ctx.lineWidth = 2;
+  // Flügel hinten
+  ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(25, -30 - schlag * 22); ctx.lineTo(40, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Schwanz
+  ctx.beginPath(); ctx.moveTo(25, 4); ctx.quadraticCurveTo(55, 0, 62, -14); ctx.lineTo(56, 2); ctx.quadraticCurveTo(50, 14, 22, 12); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath(); ctx.moveTo(62, -14); ctx.lineTo(70, -16); ctx.lineTo(64, -6); ctx.fill();
+  // Körper
+  ctx.fillStyle = F.drache;
+  ctx.beginPath(); ctx.ellipse(8, 2, 28, 15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // Bauch
+  ctx.fillStyle = "#ffcf70";
+  ctx.beginPath(); ctx.ellipse(6, 8, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // Hals und Kopf
+  ctx.fillStyle = F.drache;
+  ctx.beginPath(); ctx.ellipse(-24, -12, 16, 12, -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-34, -14); ctx.lineTo(-52, -8); ctx.lineTo(-50, 0); ctx.lineTo(-30, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Hörner
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath(); ctx.moveTo(-20, -22); ctx.lineTo(-14, -36); ctx.lineTo(-12, -20); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-28, -22); ctx.lineTo(-26, -34); ctx.lineTo(-20, -22); ctx.fill();
+  // Auge
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(-28, -15, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#222";
+  ctx.beginPath(); ctx.arc(-29.5, -15, 2.2, 0, Math.PI * 2); ctx.fill();
+  // Flügel vorne
+  ctx.fillStyle = "#b51f1f";
+  ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(14, -38 - schlag * 26); ctx.lineTo(30, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// Feuerkugel mit Matheaufgabe drauf
+function zeichneKugel(k) {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,140,0,0.45)";
+  for (let i = 1; i <= 3; i++) {
+    ctx.beginPath(); ctx.arc(k.x + i * 14, k.y - i * 2, 16 - i * 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = "#ff7b00";
+  ctx.strokeStyle = "#c23b00";
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(k.x, k.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.font = "bold 18px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#234";
+  ctx.fillStyle = "#fff";
+  ctx.strokeText(k.aufgabe.text, k.x, k.y - 28);
+  ctx.fillText(k.aufgabe.text, k.x, k.y - 28);
+  ctx.restore();
 }
 
 function zeichneMonster(x, m, zeit) {
@@ -671,11 +792,18 @@ function malen() {
   const blinkt = spiel.autschZeit > 0 && Math.floor(spiel.autschZeit * 10) % 2 === 0;
   spielfigur(MANN_X, spiel.y, spiel.x / 18, !spiel.amBoden, blinkt);
 
+  // Drachen und ihre Aufgaben-Kugeln
+  for (const d of LV.drachen) {
+    if (d.zustand === "wartet" || d.zustand === "weg") continue;
+    zeichneDrache(d.sx, d.sy, d.zeit);
+    if (d.zustand === "schiesst") zeichneKugel(d.kugel);
+  }
+
   // Fliegende Texte
   ctx.font = "bold 24px sans-serif";
   for (const t of spiel.texte) {
     ctx.fillStyle = t.text.startsWith("+") ? "#fff" : "#e63946";
-    ctx.fillText(t.text, sx(t.x), t.y);
+    ctx.fillText(t.text.replace("+0 ", ""), sx(t.x), t.y);
   }
 
   // Anzeige oben: Münzen und Weg bis zum Ziel (immer ganz oben am Bildschirm)
