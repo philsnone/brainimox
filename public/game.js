@@ -14,7 +14,8 @@ const EINSTELLUNGEN = {
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
-  drachenMuenzen: 5,      // Münzen weg, wenn man die Drachen-Aufgabe falsch löst
+  drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
+  drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
@@ -26,7 +27,7 @@ const EINSTELLUNGEN = {
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)" },
     { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)" },
-    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 3, schnee: true, schneemaenner: true,
+    { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)" },
   ],
   farben: {
@@ -117,10 +118,12 @@ function levelBauen(L) {
   }
   // Drachen kommen zwischen den ?-Blöcken
   const drachen = [];
-  const A = EINSTELLUNGEN.aufgaben, D = Math.min(L.drachen || 0, A);
+  // gleichmäßig verteilt; wenn ein Drache kurz vor einem ?-Block käme, kommt er erst danach
+  const D = L.drachen || 0;
   for (let i = 0; i < D; i++) {
-    const luecke = Math.floor(((i + 1) * (A + 1)) / (D + 1)) + 0.5; // genau zwischen zwei ?-Blöcken
-    drachen.push({ start: (laenge * luecke) / (A + 1), zustand: "wartet" });
+    let start = (laenge * (i + 1)) / (D + 1);
+    for (const f of fragen) if (start > f.x - 1400 && start < f.x + 200) start = f.x + 250;
+    drachen.push({ start, zustand: "wartet" });
   }
   return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
 }
@@ -258,12 +261,12 @@ function aufgabeMachen() {
 }
 
 // drache = true: Aufgabe kommt vom Drachen (falsch = Münzen weg, richtig = nichts passiert)
-function aufgabeZeigen(drache = false, a = aufgabeMachen()) {
+function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0) {
   const dieses = spiel;
   dieses.pause = true;
   document.getElementById("frage").textContent = (drache ? "🐉 " : "") + `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
-  meldung.textContent = "";
+  meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥` : "";
   const box = document.getElementById("antworten");
   box.innerHTML = "";
   let beantwortet = false;
@@ -384,8 +387,10 @@ function aktualisieren(dt) {
       const getroffen = Math.abs(k.x - MANN_X) < 15 + 20 && k.y > s.y - 70 - 18 && k.y < s.y + 10;
       if (getroffen) {
         d.zustand = "fliegtWeg";
-        s.texte.push({ text: "Getroffen!", x: s.x, y: s.y - 100, zeit: 1 });
-        aufgabeZeigen(true, k.aufgabe);
+        const weg = Math.min(s.muenzen, EINSTELLUNGEN.drachenTrefferMuenzen);
+        s.muenzen -= weg;
+        s.texte.push({ text: weg ? `Getroffen! −${weg}` : "Getroffen!", x: s.x, y: s.y - 100, zeit: 1.5 });
+        aufgabeZeigen(true, k.aufgabe, weg);
         return;
       }
       if (k.x < MANN_X - 60) {
