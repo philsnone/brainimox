@@ -156,10 +156,24 @@ button.falsch { background: linear-gradient(180deg, #ffa0a0, var(--rot)); box-sh
 #tabelle tr.ich td { background: #b8f5b8; font-weight: bold; }
 
 /* ---------- Laden und Schwert ---------- */
-.laden { margin-top: 1vmin; }
-.laden.versteckt { display: none; }
-button.kaufen { background: linear-gradient(180deg, #ffe680, var(--gelb)); color: #3a2a00; border-color: var(--gelb-dunkel); font-weight: 700; box-shadow: 0 0.8vmin 0 var(--gelb-dunkel); }
-button.kaufen:disabled { background: linear-gradient(180deg, #8af0a4, var(--gruen)); color: #0b3d1a; border-color: var(--gruen-dunkel); box-shadow: 0 0.8vmin 0 var(--gruen-dunkel); cursor: default; }
+#ladenknopf { right: 28vmin; }
+.ladenwaren { display: flex; gap: 4vmin; margin: 2vmin 0; flex-wrap: wrap; justify-content: center; }
+button.ware {
+  font: inherit;
+  font-size: 5.5vmin;
+  font-weight: 700;
+  min-width: 38vmin;
+  padding: 2.5vmin 4vmin;
+  border: none;
+  border-radius: 4vmin;
+  background: linear-gradient(180deg, #ffe680 0%, var(--gelb) 50%, #ffc21a 100%);
+  color: #3a2a00;
+  box-shadow: 0 1.2vmin 0 var(--gelb-dunkel), 0 2vmin 3vmin rgba(0, 0, 0, 0.3), inset 0 0.5vmin 0 rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  white-space: pre-line;
+}
+button.ware:active { transform: translateY(1vmin); box-shadow: 0 0.2vmin 0 var(--gelb-dunkel); }
+button.ware:disabled { background: linear-gradient(180deg, #8af0a4, var(--gruen)); color: #0b3d1a; box-shadow: 0 1.2vmin 0 var(--gruen-dunkel); cursor: default; transform: none; }
 .schwert-knopf {
   position: fixed;
   right: 3vmin;

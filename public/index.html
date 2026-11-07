@@ -34,13 +34,22 @@
   <div id="ende" class="schicht versteckt">
     <h1 id="endeTitel">Geschafft!</h1>
     <p id="ergebnis"></p>
-    <!-- Laden zwischen den Leveln -->
-    <div id="laden" class="laden">
-      <button class="klein-knopf kaufen" id="schwertKaufen">⚔️ Schwert kaufen</button>
-      <p class="klein" id="ladenMeldung"></p>
-    </div>
     <div class="knoepfe">
       <button class="gross" id="nochmal">Nochmal</button>
+    </div>
+  </div>
+
+  <!-- Laden: hier kauft man Schwert und Rüstung -->
+  <div id="laden" class="schicht versteckt">
+    <h1 class="titel-mittel">Laden 🛒</h1>
+    <p id="ladenMuenzen"></p>
+    <div class="ladenwaren">
+      <button class="ware" id="schwertKaufen"></button>
+      <button class="ware" id="ruestungKaufen"></button>
+    </div>
+    <p class="meldung klein" id="ladenMeldung"></p>
+    <div class="knoepfe">
+      <button class="gross" id="ladenZurueck">Weiter ▶</button>
     </div>
   </div>
 
@@ -72,6 +81,7 @@
   </div>
 
   <button id="pauseknopf" class="ecke versteckt" title="Pause">⏸</button>
+  <button id="ladenknopf" class="ecke versteckt" title="Laden (L)">🛒</button>
   <button id="schwertknopf" class="schwert-knopf versteckt" title="Schwert (S)">⚔️</button>
   <button id="vollbild" class="ecke" title="Vollbild">⛶</button>
 

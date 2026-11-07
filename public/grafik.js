@@ -281,6 +281,35 @@ function zeichneSchwert() {
   ctx.beginPath(); ctx.roundRect(-2.5, -3, 5, 10, 1.5); ctx.fill();
 }
 
+// Rüstung: silberner Brustpanzer und Helm, passt genau über den Jungen (Füße bei 0,0)
+function zeichneRuestung() {
+  const silber = (y1, y2) => verlauf(y1, y2, ["#ffffff", "#c9d3dd", "#8e9aa6"]);
+  ctx.strokeStyle = "#5f6b77";
+  ctx.lineWidth = 1.2;
+  // Brustpanzer
+  ctx.fillStyle = silber(-53, -23);
+  ctx.beginPath(); ctx.roundRect(-10.5, -53, 21, 29, 6); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, -27); ctx.stroke();
+  // Gürtel
+  ctx.fillStyle = "#7a4e1a";
+  ctx.fillRect(-10.5, -29, 21, 4);
+  ctx.fillStyle = "#ffd23f";
+  ctx.fillRect(-2.5, -29.5, 5, 5);
+  // Schulterstück
+  ctx.fillStyle = silber(-53, -45);
+  ctx.beginPath(); ctx.ellipse(1, -49, 6.5, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // Nieten
+  ctx.fillStyle = "#5f6b77";
+  for (const [nx, ny] of [[-6, -48], [6, -48], [-6, -35], [6, -35]]) { ctx.beginPath(); ctx.arc(nx, ny, 1, 0, Math.PI * 2); ctx.fill(); }
+  // Helm (Gesicht bleibt frei)
+  ctx.fillStyle = silber(-79, -64);
+  ctx.beginPath(); ctx.arc(1, -66, 11.5, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(-11.5, -67, 25, 3.5, 1.75); ctx.fill(); ctx.stroke();
+  // roter Busch oben
+  ctx.fillStyle = "#e63946";
+  ctx.beginPath(); ctx.ellipse(-1, -79, 7, 3.5, -0.2, 0, Math.PI * 2); ctx.fill();
+}
+
 // Schneemann (Mitte unten bei 0,0)
 function zeichneSchneemann() {
   const kugel = (y, r) => {
@@ -491,6 +520,7 @@ function alleBilderMalen(szene) {
   }
   textur(szene, "jungeLuft", 70, 92, 35, 84, () => zeichneJunge(0, true));
   textur(szene, "schwert", 22, 58, 11, 50, zeichneSchwert);
+  textur(szene, "ruestung", 70, 92, 35, 84, zeichneRuestung);
   // Monster
   for (let i = 0; i < MONSTER_BILDER; i++) {
     textur(szene, "monster" + i, 60, 62, 30, 54, () => zeichneMonster(Math.sin((i / MONSTER_BILDER) * Math.PI * 2) * 4, true));
@@ -604,6 +634,9 @@ function szeneBauen(szene) {
   // Spieler
   G.schatten = bild(szene, "schatten").setDepth(29);
   G.junge = bild(szene, "junge0").setDepth(30);
+  G.szene = szene;
+  G.rueckenSchwerter = [bild(szene, "schwert").setDepth(29.5), bild(szene, "schwert").setDepth(29.5)];
+  G.ruestung = bild(szene, "ruestung").setDepth(30.5);
   G.schwert = bild(szene, "schwert").setDepth(31);
   G.schwung = szene.add.graphics().setDepth(32);
 
@@ -683,6 +716,7 @@ function effekt(art, x, y) {
   if (art === "muenze") G.funken.explode(6, x, y);
   else if (art === "monster") G.sterne.explode(12, x, y);
   else if (art === "drache") G.feuer.explode(22, x, y);
+  else if (art === "level" && G.szene) G.szene.cameras.main.flash(500, 255, 255, 255); // neue Welt: kurz hell aufblitzen
 }
 
 // ---------- Jedes Bild: alles an die richtige Stelle schieben ----------
@@ -728,6 +762,8 @@ function malen(szene) {
   G.junge.setVisible(!nichtsZeigen);
   G.schatten.setVisible(!nichtsZeigen);
   G.schwert.setVisible(false);
+  G.ruestung.setVisible(false);
+  G.rueckenSchwerter.forEach((r) => r.setVisible(false));
   G.schwung.clear();
   if (G.welt) G.welt.forEach((o) => o.setVisible(false));
   G.drachen.forEach((d) => d.setVisible(false));
@@ -790,7 +826,13 @@ function malen(szene) {
   if (spiel.amBoden && !warAmBoden && !spiel.pause) G.staub.explode(7, jx, BODEN);
   warAmBoden = spiel.amBoden;
 
+  if (spiel.ruestung && !blinkt) {
+    G.ruestung.setVisible(true).setPosition(jx, spiel.y);
+  }
   if (spiel.schwert && !blinkt) {
+    // zwei Schwerter über Kreuz auf dem Rücken
+    G.rueckenSchwerter[0].setVisible(true).setPosition(jx - 12, spiel.y - 74).setRotation(Math.PI - 0.6);
+    G.rueckenSchwerter[1].setVisible(true).setPosition(jx - 2, spiel.y - 77).setRotation(Math.PI - 0.15);
     const hz = spiel.hauZeit;
     const winkel = hz > 0 ? -1.6 + (1 - hz / 0.35) * 2.6 : -0.5;
     G.schwert.setVisible(true).setPosition(jx + 9, spiel.y - 32).setRotation(winkel);

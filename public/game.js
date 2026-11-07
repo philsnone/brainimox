@@ -18,6 +18,7 @@ const EINSTELLUNGEN = {
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
+  ruestungPreis: 120,     // so viele Münzen kostet die Rüstung im Laden
   schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
   drachenBesiegtMuenzen: 100, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
@@ -121,7 +122,7 @@ function levelBauen(L) {
   return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
 }
 
-function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false) {
+function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false, ruestung = false) {
   const L = EINSTELLUNGEN.level[levelNr];
   spiel = {
     levelNr,
@@ -133,6 +134,7 @@ function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false) {
     amBoden: true,
     muenzen,              // Münzen aus dem letzten Level nimmt man mit
     schwert,              // Schwert gekauft? (behält man fürs nächste Level)
+    ruestung,             // Rüstung gekauft? Dann tut nichts mehr weh (keine Münzen weg)
     hauZeit: 0,           // > 0: der Junge schwingt gerade das Schwert
     autschZeit: 0,
     pause: false,         // Pause wegen Matheaufgabe
@@ -171,6 +173,8 @@ canvas.addEventListener("pointerdown", (e) => {
 window.addEventListener("pointerup", loslassen);
 window.addEventListener("pointercancel", loslassen);
 window.addEventListener("keydown", (e) => {
+  if (imLaden) { if (["Escape", "KeyL", "Enter"].includes(e.code)) ladenSchliessen(); return; }
+  if (e.code === "KeyL") return ladenOeffnen();
   if (["KeyP", "Escape"].includes(e.code)) return pauseUmschalten();
   if (["KeyS", "KeyX", "Enter"].includes(e.code) && spiel && !spiel.pause) { e.preventDefault(); if (!e.repeat) hauen(); return; }
   if (["Space", "ArrowUp", "KeyW"].includes(e.code)) {
@@ -193,7 +197,7 @@ document.querySelectorAll("[data-klasse]").forEach((knopf) => {
 const pauseKnopf = document.getElementById("pauseknopf");
 const pauseSchicht = document.getElementById("pause");
 function pauseUmschalten() {
-  if (!spiel || spiel.fertig) return;
+  if (!spiel || spiel.fertig || imLaden) return;
   spiel.angehalten = !spiel.angehalten;
   pauseSchicht.classList.toggle("versteckt", !spiel.angehalten);
 }
@@ -210,35 +214,59 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && spiel && !spiel.angehalten && !spiel.fertig) pauseUmschalten();
 });
 
-// ---------- Laden: Schwert kaufen ----------
-const kaufKnopf = document.getElementById("schwertKaufen");
+// ---------- Laden: Schwert und Rüstung kaufen (🛒-Knopf oder Taste L, das Spiel wartet solange) ----------
+const ladenSchicht = document.getElementById("laden");
+const ladenKnopf = document.getElementById("ladenknopf");
 const ladenMeldung = document.getElementById("ladenMeldung");
-function ladenZeigen() {
-  const preis = EINSTELLUNGEN.schwertPreis;
-  const naechstes = spiel && EINSTELLUNGEN.level[spiel.levelNr + 1];
-  document.getElementById("laden").classList.toggle("versteckt", !naechstes);
-  ladenMeldung.textContent = "";
-  kaufKnopf.disabled = spiel.schwert;
-  kaufKnopf.textContent = spiel.schwert ? "⚔️ Du hast das Schwert!" : `⚔️ Schwert kaufen: ${preis} 🪙`;
-}
-kaufKnopf.addEventListener("click", () => {
-  const preis = EINSTELLUNGEN.schwertPreis;
-  if (!spiel || spiel.schwert) return;
-  if (spiel.muenzen < preis) {
-    ladenMeldung.textContent = `Du brauchst ${preis} Münzen. Dir fehlen noch ${preis - spiel.muenzen}.`;
-    return;
+const WAREN = {
+  schwert: { knopf: document.getElementById("schwertKaufen"), name: "⚔️ Schwert", preis: () => EINSTELLUNGEN.schwertPreis,
+    gekauft: "Gekauft! Hauen: ⚔️-Knopf oder S." },
+  ruestung: { knopf: document.getElementById("ruestungKaufen"), name: "🛡️ Rüstung", preis: () => EINSTELLUNGEN.ruestungPreis,
+    gekauft: "Gekauft! Jetzt tut dir nichts mehr weh." },
+};
+let imLaden = false;
+function ladenAnzeigen() {
+  document.getElementById("ladenMuenzen").textContent = `Du hast ${spiel.muenzen} Münzen 🪙`;
+  for (const [was, w] of Object.entries(WAREN)) {
+    w.knopf.disabled = spiel[was];
+    w.knopf.textContent = spiel[was] ? `${w.name}\nHast du schon ✓` : `${w.name}\n${w.preis()} 🪙`;
   }
-  spiel.muenzen -= preis;
-  spiel.schwert = true;
-  ladenZeigen();
-  ladenMeldung.textContent = "Gekauft! Drück im Spiel den ⚔️-Knopf.";
-  document.getElementById("ergebnis").textContent = `Du hast noch ${spiel.muenzen} Münzen.`;
-});
+}
+function ladenOeffnen() {
+  if (!spiel || spiel.fertig || spiel.pause || spiel.angehalten) return;
+  imLaden = true;
+  spiel.angehalten = true;
+  ladenMeldung.textContent = "";
+  ladenAnzeigen();
+  ladenSchicht.classList.remove("versteckt");
+}
+function ladenSchliessen() {
+  if (!imLaden) return;
+  imLaden = false;
+  ladenSchicht.classList.add("versteckt");
+  if (spiel) spiel.angehalten = false;
+}
+for (const [was, w] of Object.entries(WAREN)) {
+  w.knopf.addEventListener("click", () => {
+    if (!spiel || spiel[was]) return;
+    const preis = w.preis();
+    if (spiel.muenzen < preis) {
+      ladenMeldung.textContent = `Du brauchst ${preis} Münzen. Dir fehlen noch ${preis - spiel.muenzen}.`;
+      return;
+    }
+    spiel.muenzen -= preis;
+    spiel[was] = true;
+    ladenAnzeigen();
+    ladenMeldung.textContent = w.gekauft;
+  });
+}
+ladenKnopf.addEventListener("click", ladenOeffnen);
+document.getElementById("ladenZurueck").addEventListener("click", ladenSchliessen);
 
 document.getElementById("nochmal").addEventListener("click", () => {
   endeSchicht.classList.add("versteckt");
   if (spiel && EINSTELLUNGEN.level[spiel.levelNr + 1]) {
-    neuesSpiel(spiel.levelNr + 1, spiel.muenzen, spiel.schwert); // nächstes Level
+    neuesSpiel(spiel.levelNr + 1, spiel.muenzen, spiel.schwert, spiel.ruestung); // nächstes Level
   } else if (spiel) {
     // alle Level geschafft: Name eintippen, dann Bestenliste, dann zum Start
     const muenzen = spiel.muenzen;
@@ -336,6 +364,7 @@ function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0) {
 const MANN_X = 160;       // wo das Männchen auf dem Bildschirm steht
 function aktualisieren(dt) {
   pauseKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
+  ladenKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
   schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
@@ -364,6 +393,7 @@ function aktualisieren(dt) {
   }
   const autsch = (anzahl = EINSTELLUNGEN.autschMuenzen) => {
     s.autschZeit = 1;
+    if (s.ruestung) { s.texte.push({ text: "+0 Pling! 🛡️", x: s.x, y: oben - 10, zeit: 1 }); return; }
     const weg = Math.min(s.muenzen, anzahl);
     s.muenzen -= weg;
     s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
@@ -434,7 +464,7 @@ function aktualisieren(dt) {
       const getroffen = Math.abs(k.x - MANN_X) < 15 + 20 && k.y > s.y - 70 - 18 && k.y < s.y + 10;
       if (getroffen) {
         d.zustand = "fliegtWeg";
-        const weg = Math.min(s.muenzen, EINSTELLUNGEN.drachenTrefferMuenzen);
+        const weg = s.ruestung ? 0 : Math.min(s.muenzen, EINSTELLUNGEN.drachenTrefferMuenzen);
         s.muenzen -= weg;
         s.texte.push({ text: weg ? `Getroffen! −${weg}` : "Getroffen!", x: s.x, y: s.y - 100, zeit: 1.5 });
         aufgabeZeigen(true, k.aufgabe, weg);
@@ -488,18 +518,17 @@ function aktualisieren(dt) {
   s.texte = s.texte.filter((t) => t.zeit > 0);
 
   if (s.x >= s.level.ziel) {
-    s.fertig = true;
-    const naechstes = EINSTELLUNGEN.level[s.levelNr + 1];
-    if (naechstes) {
-      document.getElementById("endeTitel").textContent = `Level ${s.levelNr + 1} geschafft!`;
-      document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen. Weiter geht's: ${naechstes.name}!`;
-      document.getElementById("nochmal").textContent = "Weiter ▶";
-    } else {
-      document.getElementById("endeTitel").textContent = "Alle Level geschafft! 🏆";
-      document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
-      document.getElementById("nochmal").textContent = "Name eintragen ✏️";
+    if (EINSTELLUNGEN.level[s.levelNr + 1]) {
+      // Kein "Weiter"-Knopf: einfach in die nächste Welt weiterlaufen
+      neuesSpiel(s.levelNr + 1, s.muenzen, s.schwert, s.ruestung);
+      Object.assign(spiel, { y: s.y, vy: s.vy, amBoden: s.amBoden, halten: s.halten, haltZeit: s.haltZeit });
+      effekt("level", 0, 0);
+      return;
     }
-    ladenZeigen();
+    s.fertig = true;
+    document.getElementById("endeTitel").textContent = "Alle Level geschafft! 🏆";
+    document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
+    document.getElementById("nochmal").textContent = "Name eintragen ✏️";
     setTimeout(() => endeSchicht.classList.remove("versteckt"), 600);
   }
 }
