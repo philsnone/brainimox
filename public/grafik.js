@@ -287,27 +287,27 @@ function zeichneRuestung() {
   ctx.strokeStyle = "#5f6b77";
   ctx.lineWidth = 1.2;
   // Brustpanzer
-  ctx.fillStyle = silber(-55, -23);
-  ctx.beginPath(); ctx.roundRect(-10.5, -55, 21, 31, 6); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, -52); ctx.lineTo(0, -27); ctx.stroke();
+  ctx.fillStyle = silber(-53, -23);
+  ctx.beginPath(); ctx.roundRect(-10.5, -53, 21, 29, 6); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, -27); ctx.stroke();
   // Gürtel
   ctx.fillStyle = "#7a4e1a";
   ctx.fillRect(-10.5, -29, 21, 4);
   ctx.fillStyle = "#ffd23f";
   ctx.fillRect(-2.5, -29.5, 5, 5);
   // Schulterstück
-  ctx.fillStyle = silber(-57, -46);
-  ctx.beginPath(); ctx.ellipse(1, -51, 7, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = silber(-53, -45);
+  ctx.beginPath(); ctx.ellipse(1, -49, 6.5, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   // Nieten
   ctx.fillStyle = "#5f6b77";
   for (const [nx, ny] of [[-6, -48], [6, -48], [-6, -35], [6, -35]]) { ctx.beginPath(); ctx.arc(nx, ny, 1, 0, Math.PI * 2); ctx.fill(); }
   // Helm (Gesicht bleibt frei)
-  ctx.fillStyle = silber(-75, -60);
-  ctx.beginPath(); ctx.arc(1, -62, 11.8, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.roundRect(-11.5, -63, 25, 4, 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = silber(-79, -64);
+  ctx.beginPath(); ctx.arc(1, -66, 11.5, Math.PI, Math.PI * 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(-11.5, -67, 25, 3.5, 1.75); ctx.fill(); ctx.stroke();
   // roter Busch oben
   ctx.fillStyle = "#e63946";
-  ctx.beginPath(); ctx.ellipse(-1, -75, 7, 3.5, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-1, -79, 7, 3.5, -0.2, 0, Math.PI * 2); ctx.fill();
 }
 
 // Schneemann (Mitte unten bei 0,0)
