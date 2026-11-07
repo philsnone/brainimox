@@ -1,1 +1,4 @@
 data/
+
+# Claude Code – lokale Einstellungen (können Secrets enthalten)
+.claude/settings.local.json
