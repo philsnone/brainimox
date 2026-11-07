@@ -22,10 +22,16 @@ const EINSTELLUNGEN = {
   schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
   drachenBesiegtMuenzen: 100, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
+  // Fliegen mit dem Raketen-Rucksack (nur in Leveln mit fliegen: true)
+  raketenKraft: 2700,     // so stark schiebt die Rakete nach oben, solange du drückst
+  flugSchwerkraft: 1300,  // so schnell sinkst du, wenn du loslässt
+  flugTempoMax: 420,      // schneller geht es nicht hoch oder runter
+  gewitterMuenzen: 2,     // Münzen weg, wenn du eine Gewitterwolke berührst
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
   // schneemaenner: true = Schneemänner statt Kisten
+  // fliegen: true = Level in der Luft: Raketen-Rucksack, Gewitterwolken statt Kisten
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
   level: [
@@ -38,6 +44,9 @@ const EINSTELLUNGEN = {
     { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)",
       berge: "#8fa9c8", huegel: "#dce8f4" },
+    { name: "Luft", tempo: 300, monsterTempo: 0, monster: 0, drachen: 5, fliegen: true,
+      himmel: "#6ec3ff", boden: "#ffffff", erde: "#e6f4ff", wolken: "rgba(255,255,255,0.95)",
+      berge: "#cfe9ff", huegel: "#f4faff" },
   ],
   farben: {
     // Spielfigur
@@ -85,10 +94,26 @@ function levelBauen(L) {
     fragen.push({ x: (laenge * i) / (EINSTELLUNGEN.aufgaben + 1), fertig: false });
   }
   const nahAnFrage = (x) => fragen.some((f) => Math.abs(f.x - x) < 300);
+  const gewitter = [];
 
   let x = 700;
   let n = 0;
-  while (x < laenge - 400) {
+  if (L.fliegen) {
+    // In der Luft: ?-Blöcke in verschiedenen Höhen, Gewitterwolken und Münzen zum Einsammeln
+    fragen.forEach((f, i) => { f.y = [150, 260, 190, 300, 170][i % 5]; });
+    while (x < laenge - 400) {
+      if (!nahAnFrage(x)) {
+        const y = 140 + zufallFest(n) * 200;            // Höhe der Gewitterwolke
+        gewitter.push({ x, y, b: 96, h: 48 });
+        // Münzen ober- oder unterhalb der Wolke
+        const my = y > 240 ? y - 90 : y + 90;
+        for (let k = 0; k < 5; k++) muenzen.push({ x: x - 40 + k * 34, y: my + Math.sin(k) * 10, weg: false });
+      }
+      n++;
+      x += 330 + ((n * 137) % 220);
+    }
+  }
+  while (!L.fliegen && x < laenge - 400) {
     if (!nahAnFrage(x)) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
@@ -119,7 +144,7 @@ function levelBauen(L) {
     for (const f of fragen) if (start > f.x - 1400 && start < f.x + 200) start = f.x + 250;
     drachen.push({ start, zustand: "wartet" });
   }
-  return { laenge, kisten, muenzen, monster, fragen, drachen, ziel: laenge };
+  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, ziel: laenge };
 }
 
 function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false, ruestung = false) {
@@ -147,6 +172,7 @@ function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false, ruestung = false)
 // ---------- Steuerung ----------
 function springen() {
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
+  if (spiel.L.fliegen) { spiel.halten = true; return; } // Rakete an
   if (spiel.amBoden) {
     spiel.vy = -EINSTELLUNGEN.sprungKraft;
     spiel.amBoden = false;
@@ -369,14 +395,25 @@ function aktualisieren(dt) {
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
   s.x += s.L.tempo * dt;
-  let schwerkraft = EINSTELLUNGEN.schwerkraft;
-  if (s.halten && s.vy < 0 && s.haltZeit < EINSTELLUNGEN.haltenZeit) {
-    schwerkraft *= EINSTELLUNGEN.haltenSchwerkraft;
-    s.haltZeit += dt;
+  if (s.L.fliegen) {
+    // Raketen-Rucksack: drücken = hoch, loslassen = langsam runter
+    const E = EINSTELLUNGEN;
+    s.vy += (s.halten ? -E.raketenKraft + E.flugSchwerkraft : E.flugSchwerkraft) * dt;
+    s.vy = Math.max(-E.flugTempoMax, Math.min(E.flugTempoMax, s.vy));
+    s.y += s.vy * dt;
+    if (s.y < 130) { s.y = 130; s.vy = Math.max(0, s.vy); }  // nicht oben aus dem Bild fliegen
+    s.amBoden = s.y >= BODEN;
+    if (s.amBoden) { s.y = BODEN; s.vy = Math.min(0, s.vy); }
+  } else {
+    let schwerkraft = EINSTELLUNGEN.schwerkraft;
+    if (s.halten && s.vy < 0 && s.haltZeit < EINSTELLUNGEN.haltenZeit) {
+      schwerkraft *= EINSTELLUNGEN.haltenSchwerkraft;
+      s.haltZeit += dt;
+    }
+    s.vy += schwerkraft * dt;
+    s.y += s.vy * dt;
+    if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; }
   }
-  s.vy += schwerkraft * dt;
-  s.y += s.vy * dt;
-  if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; }
   if (s.autschZeit > 0) s.autschZeit -= dt;
   if (s.hauZeit > 0) s.hauZeit -= dt;
 
@@ -402,6 +439,13 @@ function aktualisieren(dt) {
     const r = k.rand || 0;
     if (s.autschZeit <= 0 && rechts > k.x + r && links < k.x + k.b - r && s.y > BODEN - k.h + 4) {
       autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : EINSTELLUNGEN.autschMuenzen);
+    }
+  }
+  // Gewitterwolken in der Luft: nicht berühren!
+  for (const g of s.level.gewitter) {
+    if (s.autschZeit <= 0 && Math.abs(g.x - s.x) < g.b / 2 + 10 && oben < g.y + g.h / 2 - 6 && s.y > g.y - g.h / 2 + 6) {
+      autsch(EINSTELLUNGEN.gewitterMuenzen);
+      effekt("blitz", s.x, s.y - 40);
     }
   }
   // Monster: laufen auf dich zu. Von oben draufspringen = Monster fällt um!
@@ -445,7 +489,7 @@ function aktualisieren(dt) {
       if (d.zeit > 1.3) {
         d.zustand = "schiesst";
         const a = aufgabeMachen();
-        d.kugel = { aufgabe: a, ax: d.sx - 45, ay: d.sy + 10, t: 0 };
+        d.kugel = { aufgabe: a, ax: d.sx - 45, ay: d.sy + 10, t: 0, zielY: s.L.fliegen ? s.y - 35 : BODEN - 35 };
         d.kugel.x = d.kugel.ax; d.kugel.y = d.kugel.ay;
       }
     } else if (d.zustand === "schiesst") {
@@ -453,7 +497,7 @@ function aktualisieren(dt) {
       k.t += dt / EINSTELLUNGEN.drachenFlugzeit;
       // fliegt auf Bauchhöhe zu dir und dann weiter nach links
       k.x = k.ax + (MANN_X - k.ax) * k.t;
-      k.y = k.ay + (BODEN - 35 - k.ay) * Math.min(1, k.t);
+      k.y = k.ay + (k.zielY - k.ay) * Math.min(1, k.t);
       // Mit dem Schwert: Kugel ist nah genug → zurück zum Drachen hauen!
       if (s.hauZeit > 0 && k.x > MANN_X - 20 && k.x < MANN_X + 95 && k.y > s.y - 120 && k.y < s.y + 20) {
         d.zustand = "zurueck";
@@ -498,10 +542,10 @@ function aktualisieren(dt) {
     }
   }
   // ?-Blöcke hängen in der Luft: Man muss hochspringen und sie mit dem Kopf berühren
-  const blockUnten = BODEN - EINSTELLUNGEN.fragezeichenHoehe + 28;
-  const blockOben = blockUnten - 56;
   for (const f of s.level.fragen) {
     if (f.fertig) continue;
+    const blockUnten = (f.y || BODEN - EINSTELLUNGEN.fragezeichenHoehe) + 28;
+    const blockOben = blockUnten - 56;
     if (rechts > f.x - 28 && links < f.x + 28 && oben < blockUnten && s.y > blockOben) {
       f.fertig = true;
       s.vy = Math.max(s.vy, 0); // Kopf stößt an: nicht weiter nach oben

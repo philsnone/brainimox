@@ -281,6 +281,48 @@ function zeichneSchwert() {
   ctx.beginPath(); ctx.roundRect(-2.5, -3, 5, 10, 1.5); ctx.fill();
 }
 
+// Gewitterwolke: dunkelgrau mit Blitz (Mitte bei 0,0)
+function zeichneGewitter() {
+  const teile = [[-30, 6, 20], [-8, -6, 26], [20, -2, 22], [36, 8, 16], [0, 10, 22]];
+  ctx.fillStyle = "rgba(40,50,70,0.35)";
+  ctx.beginPath();
+  for (const [x, y, r] of teile) { ctx.moveTo(x + r, y + 5); ctx.arc(x, y + 5, r, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = verlauf(-32, 30, ["#8a94a6", "#5b6577", "#454e5e"]);
+  ctx.beginPath();
+  for (const [x, y, r] of teile) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
+  ctx.fill();
+  // Blitz
+  ctx.fillStyle = "#ffd23f";
+  ctx.strokeStyle = "#e0a800";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(2, 18); ctx.lineTo(-8, 36); ctx.lineTo(0, 36); ctx.lineTo(-6, 52); ctx.lineTo(12, 30); ctx.lineTo(4, 30); ctx.lineTo(10, 18);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+
+// Raketen-Rucksack (Füße vom Jungen bei 0,0, Rucksack hinten auf dem Rücken)
+function zeichneRakete() {
+  const rohr = (x) => {
+    ctx.fillStyle = verlauf(-58, -28, ["#ff8a8a", "#e63946", "#a4161a"]);
+    ctx.beginPath(); ctx.roundRect(x - 4, -56, 8, 26, 4); ctx.fill();
+    ctx.fillStyle = "#c9d3dd";
+    ctx.beginPath(); ctx.moveTo(x - 4, -31); ctx.lineTo(x + 4, -31); ctx.lineTo(x + 5, -26); ctx.lineTo(x - 5, -26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffd23f";
+    ctx.beginPath(); ctx.arc(x, -56, 4, Math.PI, 0); ctx.fill();
+  };
+  ctx.fillStyle = "#5b6577";
+  ctx.beginPath(); ctx.roundRect(-16, -52, 10, 18, 3); ctx.fill();
+  rohr(-17);
+  rohr(-9);
+}
+
+// Flamme aus der Rakete (oben bei 0,0, zeigt nach unten)
+function zeichneFlamme() {
+  ctx.fillStyle = verlauf(0, 30, ["#fff6c2", "#ffd23f", "#ff7b00", "rgba(214,40,40,0)"]);
+  ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-5, 18, 0, 30); ctx.quadraticCurveTo(5, 18, 6, 0); ctx.closePath(); ctx.fill();
+}
+
 // Rüstung: silberner Brustpanzer und Helm, passt genau über den Jungen (Füße bei 0,0)
 function zeichneRuestung() {
   const silber = (y1, y2) => verlauf(y1, y2, ["#ffffff", "#c9d3dd", "#8e9aa6"]);
@@ -437,6 +479,30 @@ function zeichneWolke(n) {
   ctx.fill();
 }
 
+// Wolkenbank für die Luft-Welt: runde Wolkenberge statt Hügel (wiederholt sich nahtlos)
+function zeichneWolkenBank(B, hoehe, farbe, saat, schritt) {
+  const kreise = [];
+  for (let x = 0; x < B; x += schritt) {
+    const t = (x / B) * Math.PI * 2;
+    const r = schritt * (0.8 + 0.35 * Math.sin(t * 3 + saat));
+    const y = -hoehe * (0.45 + 0.3 * Math.sin(t * 2 + saat * 2));
+    for (const d of [-B, 0, B]) kreise.push([x + d, y, r]);
+  }
+  const malKreise = (dy) => {
+    ctx.beginPath();
+    for (const [x, y, r] of kreise) { ctx.moveTo(x + r, y + dy); ctx.arc(x, y + dy, r, 0, Math.PI * 2); }
+    ctx.rect(0, -hoehe * 0.45 + dy, B, hoehe + 10);
+    ctx.fill();
+  };
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, -hoehe * 1.3, B, hoehe * 1.3 + 10); ctx.clip();
+  ctx.fillStyle = mischen(farbe, -0.08);
+  malKreise(5);
+  ctx.fillStyle = verlauf(-hoehe, 0, [mischen(farbe, 0.4), farbe]);
+  malKreise(0);
+  ctx.restore();
+}
+
 // Hügel/Berge: ein Streifen, der sich nahtlos wiederholt (Breite B)
 function zeichneHuegel(B, hoehe, farbe, spitz, schneeKappen, saat) {
   const punkte = [];
@@ -491,6 +557,11 @@ function zeichneErde(B, L) {
   for (let i = 0; i < 26; i++) {
     const x = 8 + zufallFest(i) * (B - 16), y = 8 + zufallFest(i + 50) * 56, r = 2 + zufallFest(i + 99) * 3.5;
     ctx.fillStyle = zufallFest(i + 7) < 0.6 ? mischen(L.erde, -0.15) : mischen(L.erde, 0.15);
+    if (L.fliegen) {
+      // Wolken-Kugeln: ganz im Bild lassen, damit nichts abgeschnitten aussieht
+      const R = r * 2.2, wx = R + zufallFest(i) * (B - 2 * R), wy = R + zufallFest(i + 50) * (64 - 2 * R);
+      ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.arc(wx, wy, R, 0, Math.PI * 2); ctx.fill(); continue;
+    }
     ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
@@ -521,6 +592,9 @@ function alleBilderMalen(szene) {
   textur(szene, "jungeLuft", 70, 92, 35, 84, () => zeichneJunge(0, true));
   textur(szene, "schwert", 22, 58, 11, 50, zeichneSchwert);
   textur(szene, "ruestung", 70, 92, 35, 84, zeichneRuestung);
+  textur(szene, "rakete", 70, 92, 35, 84, zeichneRakete);
+  textur(szene, "flamme", 16, 34, 8, 2, zeichneFlamme);
+  textur(szene, "gewitter", 120, 112, 56, 34, zeichneGewitter);
   // Monster
   for (let i = 0; i < MONSTER_BILDER; i++) {
     textur(szene, "monster" + i, 60, 62, 30, 54, () => zeichneMonster(Math.sin((i / MONSTER_BILDER) * Math.PI * 2) * 4, true));
@@ -571,8 +645,14 @@ function alleBilderMalen(szene) {
       ctx.fillRect(0, 0, 4, 256);
     }, 1);
     const berge = L.berge || mischen(L.himmel, -0.2), huegel = L.huegel || mischen(L.boden, 0.1);
-    textur(szene, "berge" + n, 800, 190, 0, 180, () => zeichneHuegel(800, 170, berge, !!L.schnee, !!L.schnee, 1.3 + n), 1.5);
-    textur(szene, "huegel" + n, 640, 110, 0, 100, () => zeichneHuegel(640, 85, huegel, false, false, 0.4 + n * 2), 1.5);
+    if (L.fliegen) {
+      // In der Luft: Wolkenberge statt Hügel
+      textur(szene, "berge" + n, 800, 190, 0, 180, () => zeichneWolkenBank(800, 150, berge, 1.3 + n, 50), 1.5);
+      textur(szene, "huegel" + n, 640, 110, 0, 100, () => zeichneWolkenBank(640, 70, huegel, 0.4 + n * 2, 32), 1.5);
+    } else {
+      textur(szene, "berge" + n, 800, 190, 0, 180, () => zeichneHuegel(800, 170, berge, !!L.schnee, !!L.schnee, 1.3 + n), 1.5);
+      textur(szene, "huegel" + n, 640, 110, 0, 100, () => zeichneHuegel(640, 85, huegel, false, false, 0.4 + n * 2), 1.5);
+    }
     textur(szene, "gras" + n, 240, 36, 0, 10, () => zeichneGras(240, L), 2);
     textur(szene, "erde" + n, 300, 72, 0, 0, () => zeichneErde(300, L), 2);
   });
@@ -637,6 +717,8 @@ function szeneBauen(szene) {
   G.szene = szene;
   G.rueckenSchwerter = [bild(szene, "schwert").setDepth(29.5), bild(szene, "schwert").setDepth(29.5)];
   G.ruestung = bild(szene, "ruestung").setDepth(30.5);
+  G.rakete = bild(szene, "rakete").setDepth(29.4);
+  G.flammen = [bild(szene, "flamme").setDepth(29.3), bild(szene, "flamme").setDepth(29.3)];
   G.schwert = bild(szene, "schwert").setDepth(31);
   G.schwung = szene.add.graphics().setDepth(32);
 
@@ -690,7 +772,8 @@ function levelAufbauen(szene, LV, L) {
   }
   for (const m of LV.muenzen) m._bild = neu(bild(szene, "muenze", m.x, m.y).setDepth(22));
   const fy = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
-  for (const f of LV.fragen) f._bild = neu(bild(szene, "frage", f.x, fy).setDepth(23));
+  for (const f of LV.fragen) f._bild = neu(bild(szene, "frage", f.x, f.y || fy).setDepth(23));
+  for (const g of LV.gewitter) g._bild = neu(bild(szene, "gewitter", g.x, g.y).setDepth(24));
   G.fahne = neu(bild(szene, "fahne", LV.ziel, BODEN).setDepth(18));
   G.drachen.forEach((d) => d.destroy());
   G.kugeln.forEach((k) => { k.bild.destroy(); k.text.destroy(); });
@@ -716,6 +799,7 @@ function effekt(art, x, y) {
   if (art === "muenze") G.funken.explode(6, x, y);
   else if (art === "monster") G.sterne.explode(12, x, y);
   else if (art === "drache") G.feuer.explode(22, x, y);
+  else if (art === "blitz") G.funken.explode(14, x, y);
   else if (art === "level" && G.szene) G.szene.cameras.main.flash(500, 255, 255, 255); // neue Welt: kurz hell aufblitzen
 }
 
@@ -763,6 +847,8 @@ function malen(szene) {
   G.schatten.setVisible(!nichtsZeigen);
   G.schwert.setVisible(false);
   G.ruestung.setVisible(false);
+  G.rakete.setVisible(false);
+  G.flammen.forEach((f) => f.setVisible(false));
   G.rueckenSchwerter.forEach((r) => r.setVisible(false));
   G.schwung.clear();
   if (G.welt) G.welt.forEach((o) => o.setVisible(false));
@@ -810,6 +896,11 @@ function malen(szene) {
     if (f.fertig && f._bild.texture.key !== "frageLeer") f._bild.setTexture("frageLeer").setScale(1 / ANKER.frageLeer.ts);
     else if (!f.fertig) f._bild.setScale((1 + Math.sin(t * 5) * 0.04) / ANKER.frage.ts);
   }
+  for (const g of LV.gewitter) {
+    const v = sichtbar(g.x);
+    g._bild.setVisible(v);
+    if (v) g._bild.y = g.y + Math.sin(t * 2 + g.x) * 3; // schwebt ein bisschen
+  }
   G.fahne.setVisible(sichtbar(LV.ziel));
 
   // Der Junge
@@ -826,6 +917,16 @@ function malen(szene) {
   if (spiel.amBoden && !warAmBoden && !spiel.pause) G.staub.explode(7, jx, BODEN);
   warAmBoden = spiel.amBoden;
 
+  if (L.fliegen && !blinkt) {
+    // Raketen-Rucksack, Flammen wenn man drückt (oder klein beim Schweben)
+    G.rakete.setVisible(true).setPosition(jx, spiel.y);
+    const an = spiel.halten;
+    G.flammen.forEach((f, i) => {
+      const flackern = 0.75 + Math.sin(t * 40 + i * 2) * 0.25;
+      f.setVisible(an || !spiel.amBoden).setPosition(jx - 17 + i * 8, spiel.y - 26)
+        .setScale(0.8 / TS, ((an ? 1.1 : 0.35) * flackern) / TS);
+    });
+  }
   if (spiel.ruestung && !blinkt) {
     G.ruestung.setVisible(true).setPosition(jx, spiel.y);
   }
