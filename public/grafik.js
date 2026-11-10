@@ -74,11 +74,26 @@ function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
 }
 
 // Der Junge: orange Haare, blaues T-Shirt, grüne Hose. Füße sind bei 0,0.
-function zeichneJunge(lauf, inLuft) {
-  const F = EINSTELLUNGEN.farben;
+// fig = welche Figur (andere Farben und Zubehör wie Stirnband, Umhang, Kappe)
+function zeichneJunge(lauf, inLuft, fig = figur()) {
+  const F = Object.assign({}, EINSTELLUNGEN.farben, fig.farben || {});
   const x = 0, y = 0;
   const s = inLuft ? 0.9 : Math.sin(lauf);        // Schwung von Armen und Beinen
   const huefte = y - 28, schulter = y - 50;
+  const flattern = inLuft ? 3 : Math.sin(lauf * 2) * 2;
+  const Z = fig.zubehoer || "#e23b3b";            // Farbe vom Zubehör
+
+  if (fig.extra === "umhang") {
+    // Umhang hinten, weht nach links
+    ctx.fillStyle = verlauf(schulter, huefte + 6, [Z, mischen(Z, -0.35)]);
+    ctx.beginPath();
+    ctx.moveTo(x - 6, schulter - 2);
+    ctx.quadraticCurveTo(x - 22, schulter + 10, x - 24 + flattern, huefte + 8);
+    ctx.lineTo(x - 8, huefte + 2);
+    ctx.lineTo(x + 4, schulter);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   const bein = (w, hinten) => {
     const hose = hinten ? mischen(F.hose, -0.2) : F.hose;
@@ -145,7 +160,73 @@ function zeichneJunge(lauf, inLuft) {
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(x + 5, kopfY + 4, 3, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
 
+  if (fig.extra === "stirnband") {
+    // Stirnband mit zwei Bändern, die nach hinten wehen
+    ctx.fillStyle = Z;
+    ctx.beginPath(); ctx.roundRect(x - 10, kopfY - 6, 21, 4.5, 2); ctx.fill();
+    ctx.strokeStyle = Z; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x - 9, kopfY - 4); ctx.quadraticCurveTo(x - 16, kopfY - 6 + flattern, x - 21, kopfY - 2 + flattern);
+    ctx.moveTo(x - 9, kopfY - 3); ctx.quadraticCurveTo(x - 15, kopfY + flattern, x - 19, kopfY + 4 + flattern);
+    ctx.stroke();
+  }
+  if (fig.extra === "kappe") {
+    // Jäger-Kappe mit Schirm nach vorne und Feder
+    ctx.fillStyle = Z;
+    ctx.beginPath(); ctx.arc(x, kopfY - 3, 10.5, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = mischen(Z, -0.25);
+    ctx.beginPath(); ctx.roundRect(x - 2, kopfY - 5, 17, 4, 2); ctx.fill();
+    ctx.strokeStyle = fig.feder || "#ffd23f"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x - 6, kopfY - 9); ctx.quadraticCurveTo(x - 12, kopfY - 20, x - 4, kopfY - 22); ctx.stroke();
+  }
+
   arm(s * 0.9, false);
+}
+
+// Alle Bilder vom Jungen (für die gerade gewählte Figur) malen
+function jungeMalen(szene) {
+  for (let i = 0; i < LAUF_BILDER; i++) {
+    textur(szene, "junge" + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false));
+  }
+  textur(szene, "jungeLuft", 70, 92, 35, 84, () => zeichneJunge(0, true));
+}
+// Wird aufgerufen, wenn man im Laden eine andere Figur nimmt
+function figurNeuMalen() {
+  if (!G.szene) return;
+  jungeMalen(G.szene);
+  if (G.junge) G.junge.setTexture("jungeLuft");
+}
+// Kleines Bild einer Figur für den Laden (wird einmal gemalt und gemerkt)
+const figurBilder = {};
+function figurBild(fig) {
+  if (figurBilder[fig.id]) return figurBilder[fig.id];
+  const alt = ctx;
+  const c = document.createElement("canvas");
+  c.width = 140; c.height = 184;
+  ctx = c.getContext("2d");
+  ctx.scale(2, 2); ctx.translate(35, 86);
+  zeichneJunge(0.7, false, fig);
+  if (fig.ruestung) {
+    // Rüstung auf eigenes Bild malen (bei dunkler Rüstung abdunkeln), dann drauflegen
+    const r = document.createElement("canvas");
+    r.width = 140; r.height = 184;
+    const haupt = ctx;
+    ctx = r.getContext("2d");
+    ctx.scale(2, 2); ctx.translate(35, 86);
+    zeichneRuestung();
+    if (fig.dunkleRuestung) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.fillStyle = "rgba(20,20,24,0.72)";
+      ctx.fillRect(0, 0, 140, 184);
+    }
+    ctx = haupt;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(r, 0, 0);
+  }
+  if (fig.schwert) { ctx.setTransform(2, 0, 0, 2, 70 + 18, 172 - 64); ctx.rotate(-0.5); zeichneSchwert(); }
+  ctx = alt;
+  return (figurBilder[fig.id] = c.toDataURL());
 }
 
 // Flügel für fliegende Monster (linker Flügel, Gelenk bei 0,0; der rechte ist gespiegelt)
@@ -632,10 +713,7 @@ function zeichneBlumen() {
 
 function alleBilderMalen(szene) {
   // Der Junge: Laufbilder und ein Sprungbild
-  for (let i = 0; i < LAUF_BILDER; i++) {
-    textur(szene, "junge" + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false));
-  }
-  textur(szene, "jungeLuft", 70, 92, 35, 84, () => zeichneJunge(0, true));
+  jungeMalen(szene);
   textur(szene, "schwert", 22, 58, 11, 50, zeichneSchwert);
   textur(szene, "ruestung", 70, 92, 35, 84, zeichneRuestung);
   textur(szene, "rakete", 70, 92, 35, 84, zeichneRakete);
@@ -986,7 +1064,7 @@ function malen(szene) {
     });
   }
   if (spiel.ruestung && !blinkt) {
-    G.ruestung.setVisible(true).setPosition(jx, spiel.y);
+    G.ruestung.setVisible(true).setPosition(jx, spiel.y).setTint(figur().dunkleRuestung ? 0x3a3a44 : 0xffffff);
   }
   if (spiel.schwert && !blinkt) {
     // zwei Schwerter über Kreuz auf dem Rücken
