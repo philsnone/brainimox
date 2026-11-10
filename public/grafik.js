@@ -148,6 +148,23 @@ function zeichneJunge(lauf, inLuft) {
   arm(s * 0.9, false);
 }
 
+// Flügel für fliegende Monster (linker Flügel, Gelenk bei 0,0; der rechte ist gespiegelt)
+function zeichneFluegel() {
+  const F = EINSTELLUNGEN.farben;
+  ctx.fillStyle = verlauf(-20, 8, [mischen(F.monster, 0.35), mischen(F.monster, -0.2)]);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(-14, -26, -34, -18);
+  ctx.quadraticCurveTo(-28, -10, -32, -4);
+  ctx.quadraticCurveTo(-22, -4, -24, 4);
+  ctx.quadraticCurveTo(-12, 0, 0, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = mischen(F.monster, -0.4);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(-30, -16); ctx.moveTo(0, 3); ctx.lineTo(-28, -3); ctx.stroke();
+}
+
 // Monster: lila, mit Hörnchen und Zähnen. Füße bei 0,0 (auf dem Boden).
 function zeichneMonster(wackeln, lebt) {
   const F = EINSTELLUNGEN.farben;
@@ -600,6 +617,7 @@ function alleBilderMalen(szene) {
     textur(szene, "monster" + i, 60, 62, 30, 54, () => zeichneMonster(Math.sin((i / MONSTER_BILDER) * Math.PI * 2) * 4, true));
   }
   textur(szene, "monsterUm", 60, 62, 30, 54, () => zeichneMonster(0, false));
+  textur(szene, "fluegel", 40, 36, 36, 26, zeichneFluegel);
   // Drachen
   for (let i = 0; i < DRACHE_BILDER; i++) {
     textur(szene, "drache" + i, 130, 96, 56, 70, () => zeichneDrache(Math.sin((i / DRACHE_BILDER) * Math.PI * 2)));
@@ -767,8 +785,9 @@ function levelAufbauen(szene, LV, L) {
     k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale(1.1 / TS, 1 / TS));
   }
   for (const m of LV.monster) {
-    m._bild = neu(bild(szene, "monster0", m.x, BODEN).setDepth(21));
+    m._bild = neu(bild(szene, "monster0", m.x, m.flug ? m.y : BODEN).setDepth(21));
     m._schatten = neu(bild(szene, "schatten", m.x, BODEN + 1).setDepth(19));
+    if (m.flug) m._fluegel = [neu(bild(szene, "fluegel").setDepth(20.9)), neu(bild(szene, "fluegel").setDepth(20.9).setFlipX(true).setOrigin(1 - ANKER.fluegel.x, ANKER.fluegel.y))];
   }
   for (const m of LV.muenzen) m._bild = neu(bild(szene, "muenze", m.x, m.y).setDepth(22));
   const fy = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
@@ -870,9 +889,17 @@ function malen(szene) {
   for (const m of LV.monster) {
     const v = sichtbar(m.x) && m.umfallen <= 1.2;
     m._bild.setVisible(v);
-    m._schatten.setVisible(v && m.lebt);
+    m._schatten.setVisible(v && m.lebt && !m.flug);
+    if (m._fluegel) m._fluegel.forEach((f) => f.setVisible(v && m.lebt));
     if (!v) continue;
     m._bild.x = m.x; m._schatten.x = m.x;
+    if (m.flug) {
+      // fliegt: Flügel schlagen; besiegt = fällt nach unten
+      m._bild.y = m.lebt ? m.y : m.y + m.umfallen * m.umfallen * 400;
+      const schlag = Math.sin(t * 16 + m.x) * 0.45;
+      m._fluegel[0].setPosition(m.x - 12, m.y - 24).setRotation(schlag);
+      m._fluegel[1].setPosition(m.x + 12, m.y - 24).setRotation(-schlag);
+    }
     if (m.lebt) {
       m._bild.setTexture("monster" + lauf);
     } else {
