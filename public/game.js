@@ -12,15 +12,15 @@ const EINSTELLUNGEN = {
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
   levelSekunden: 100,     // wie lange das Level ungefähr dauert
   aufgaben: 5,            // wie viele Matheaufgaben im Level
-  bonusMuenzen: 5,        // Münzen für eine richtige Antwort
+  bonusMuenzen: 200,      // Münzen für eine richtige Antwort am ?-Block
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
-  monsterMuenzen: 10,     // Münzen, wenn man auf ein Monster springt
+  monsterMuenzen: 100,    // Münzen, wenn man ein Monster besiegt (draufspringen oder Schwert)
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
   ruestungPreis: 120,     // so viele Münzen kostet die Rüstung im Laden
   schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
-  drachenBesiegtMuenzen: 100, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
+  drachenBesiegtMuenzen: 50, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Fliegen mit dem Raketen-Rucksack (nur in Leveln mit fliegen: true)
   raketenKraft: 2700,     // so stark schiebt die Rakete nach oben, solange du drückst
@@ -44,7 +44,7 @@ const EINSTELLUNGEN = {
     { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
       himmel: "#c9dcef", boden: "#f7fbff", erde: "#a9bccf", wolken: "rgba(255,255,255,0.95)",
       berge: "#8fa9c8", huegel: "#dce8f4" },
-    { name: "Luft", tempo: 300, monsterTempo: 0, monster: 0, drachen: 5, fliegen: true,
+    { name: "Luft", tempo: 300, monsterTempo: 50, monster: 0.6, drachen: 10, fliegen: true,
       himmel: "#6ec3ff", boden: "#ffffff", erde: "#e6f4ff", wolken: "rgba(255,255,255,0.95)",
       berge: "#cfe9ff", huegel: "#f4faff" },
   ],
@@ -108,6 +108,11 @@ function levelBauen(L) {
         // Münzen ober- oder unterhalb der Wolke
         const my = y > 240 ? y - 90 : y + 90;
         for (let k = 0; k < 5; k++) muenzen.push({ x: x - 40 + k * 34, y: my + Math.sin(k) * 10, weg: false });
+        // Fliegendes Monster zwischen den Wolken (es flattert auf und ab)
+        if (zufallFest(n + 300) < L.monster) {
+          const hoehe = 190 + zufallFest(n + 400) * 140; // Füße des Monsters
+          monster.push({ x: x + 190, y: hoehe, basisY: hoehe, flug: true, zeit: n, b: 40, h: 38, lebt: true, umfallen: 0 });
+        }
       }
       n++;
       x += 330 + ((n * 137) % 220);
@@ -452,16 +457,18 @@ function aktualisieren(dt) {
   for (const m of s.level.monster) {
     if (!m.lebt) { m.umfallen += dt; continue; }
     m.x -= s.L.monsterTempo * dt;
-    const kopf = BODEN - m.h;
+    if (m.flug) { m.zeit += dt; m.y = m.basisY + Math.sin(m.zeit * 2.5) * 25; } // flattert auf und ab
+    const fuss = m.flug ? m.y : BODEN;
+    const kopf = fuss - m.h;
     // Schwert: Monster direkt vor dir wird umgehauen
-    if (s.hauZeit > 0 && m.x - m.b / 2 < rechts + 55 && m.x + m.b / 2 > links && s.y > kopf - 40) {
+    if (s.hauZeit > 0 && m.x - m.b / 2 < rechts + 55 && m.x + m.b / 2 > links && s.y > kopf - 40 && oben < fuss + 30) {
       m.lebt = false;
       effekt("monster", m.x, kopf);
       s.muenzen += EINSTELLUNGEN.monsterMuenzen;
       s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen} Zack!`, x: m.x, y: kopf - 20, zeit: 1 });
       continue;
     }
-    if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf) continue;
+    if (rechts <= m.x - m.b / 2 || links >= m.x + m.b / 2 || s.y <= kopf || oben >= fuss) continue;
     if (s.vy > 0 && s.y < kopf + 24) {
       m.lebt = false;
       effekt("monster", m.x, kopf);
