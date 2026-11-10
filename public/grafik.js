@@ -421,6 +421,35 @@ function zeichneKiste() {
   ctx.stroke();
 }
 
+// Riesen-Hotdog für die Wiese (links unten bei 0,0): Brötchen, Würstchen, Senf
+function zeichneHotdog() {
+  const b = 104, h = 48;
+  // Würstchen schaut an beiden Seiten raus
+  ctx.fillStyle = verlauf(-36, -14, ["#e2725b", "#b8442f", "#8f2f1f"]);
+  ctx.beginPath(); ctx.roundRect(-2, -38, b + 4, 22, 11); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.beginPath(); ctx.roundRect(4, -35, b - 8, 4, 2); ctx.fill();
+  // untere Brötchenhälfte
+  ctx.fillStyle = verlauf(-26, 0, ["#f6c77a", "#e09a45", "#b8742c"]);
+  ctx.beginPath(); ctx.roundRect(4, -26, b - 8, 26, 13); ctx.fill();
+  // obere Brötchenhälfte (hinten)
+  ctx.fillStyle = verlauf(-h, -30, ["#f9d58e", "#e7a64f"]);
+  ctx.beginPath(); ctx.roundRect(8, -h, b - 16, 16, 8); ctx.fill();
+  // Würstchen vorne nochmal, damit es im Brötchen liegt
+  ctx.fillStyle = verlauf(-36, -18, ["#d9654d", "#a43a26"]);
+  ctx.beginPath(); ctx.roundRect(6, -36, b - 12, 16, 8); ctx.fill();
+  // Senf im Zickzack
+  ctx.strokeStyle = "#ffd21f";
+  ctx.lineWidth = 3.5;
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let i = 0; i <= 10; i++) { const x = 12 + i * ((b - 24) / 10); const y = i % 2 ? -32 : -24; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  // Glanz auf dem Brötchen
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.beginPath(); ctx.ellipse(28, -9, 12, 3, 0, 0, Math.PI * 2); ctx.fill();
+}
+
 function zeichneMuenze() {
   const F = EINSTELLUNGEN.farben;
   const g = ctx.createRadialGradient(-4, -4, 1, 0, 0, 12);
@@ -625,6 +654,7 @@ function alleBilderMalen(szene) {
   textur(szene, "kugel", 104, 60, 30, 30, zeichneKugel);
   textur(szene, "kiste", 50, 50, 3, 47, zeichneKiste);
   textur(szene, "schneemann", 48, 74, 24, 70, zeichneSchneemann);
+  textur(szene, "hotdog", 114, 56, 5, 52, zeichneHotdog);
   textur(szene, "muenze", 28, 28, 14, 14, zeichneMuenze);
   textur(szene, "frage", 62, 62, 31, 31, () => zeichneFrageBlock(false));
   textur(szene, "frageLeer", 62, 62, 31, 31, () => zeichneFrageBlock(true));
@@ -781,8 +811,9 @@ function levelAufbauen(szene, LV, L) {
   for (const k of LV.kisten) {
     k._bild = neu(L.schneemaenner
       ? bild(szene, "schneemann", k.x + k.b / 2, BODEN).setDepth(20)
+      : k.hotdog ? bild(szene, "hotdog", k.x, BODEN).setDepth(20)
       : bild(szene, "kiste", k.x, BODEN).setDepth(20));
-    k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale(1.1 / TS, 1 / TS));
+    k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale((1.1 * k.b) / 44 / TS, 1 / TS));
   }
   for (const m of LV.monster) {
     m._bild = neu(bild(szene, "monster0", m.x, m.flug ? m.y : BODEN).setDepth(21));

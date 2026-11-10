@@ -15,6 +15,7 @@ const EINSTELLUNGEN = {
   bonusMuenzen: 200,      // Münzen für eine richtige Antwort am ?-Block
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
   monsterMuenzen: 100,    // Münzen, wenn man ein Monster besiegt (draufspringen oder Schwert)
+  hotdogMuenzen: 500,     // Münzen weg, wenn man einen Riesen-Hotdog berührt (Wiese)
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
@@ -38,7 +39,7 @@ const EINSTELLUNGEN = {
     { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9, drachen: 1,
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)",
       berge: "#a9d8c0", huegel: "#7cc96a" },
-    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true,
+    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true, hotdogs: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)",
       berge: "#b6dcb0", huegel: "#95dd6c" },
     { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
@@ -123,11 +124,12 @@ function levelBauen(L) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
         if (L.schneemaenner) kisten.push({ x, b: 44, h: 62, rand: 5, schneemann: true });
+        else if (L.hotdogs) kisten.push({ x, b: 104, h: 48, rand: 6, hotdog: true }); // Riesen-Hotdog
         else kisten.push({ x, b: 44, h: 44 });
         // ab "monster" über 1: manchmal noch ein Monster hinter der Kiste
         if (zufallFest(n + 100) < L.monster - 1) monster.push({ x: x + 230, b: 40, h: 38, lebt: true, umfallen: 0 });
         for (let k = -2; k <= 2; k++) {
-          muenzen.push({ x: x + 22 + k * 32, y: BODEN - 120 + Math.abs(k) * 18, weg: false });
+          muenzen.push({ x: x + kisten[kisten.length - 1].b / 2 + k * 32, y: BODEN - 120 + Math.abs(k) * 18, weg: false });
         }
       } else if (zufallFest(n) < L.monster) {
         // Monster
@@ -443,7 +445,7 @@ function aktualisieren(dt) {
   for (const k of s.level.kisten) {
     const r = k.rand || 0;
     if (s.autschZeit <= 0 && rechts > k.x + r && links < k.x + k.b - r && s.y > BODEN - k.h + 4) {
-      autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : EINSTELLUNGEN.autschMuenzen);
+      autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : k.hotdog ? EINSTELLUNGEN.hotdogMuenzen : EINSTELLUNGEN.autschMuenzen);
     }
   }
   // Gewitterwolken in der Luft: nicht berühren!
