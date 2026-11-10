@@ -193,3 +193,34 @@ button.ware:disabled { background: linear-gradient(180deg, #8af0a4, var(--gruen)
 }
 .schwert-knopf:active { transform: translateY(0.8vmin); box-shadow: 0 0.2vmin 0 rgba(0, 0, 0, 0.25); }
 .schwert-knopf.versteckt { display: none; }
+
+/* ---------- Figuren im Laden ---------- */
+#laden { overflow-y: auto; justify-content: flex-start; padding: 3vmin 2vmin; box-sizing: border-box; }
+#laden > * { flex-shrink: 0; }
+.ladenfiguren { display: flex; gap: 2vmin; flex-wrap: wrap; justify-content: center; margin-bottom: 1vmin; }
+button.figur {
+  font: inherit;
+  font-size: 2.6vmin;
+  font-weight: 700;
+  width: 18vmin;
+  padding: 1.2vmin;
+  border: 0.6vmin solid transparent;
+  border-radius: 3vmin;
+  background: rgba(255, 255, 255, 0.92);
+  color: #22324a;
+  box-shadow: 0 0.8vmin 0 rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: pre-line;
+  line-height: 1.2;
+}
+button.figur img { height: 12vmin; }
+button.figur.aktiv { border-color: var(--gruen); background: #e9ffe9; }
+button.figur:active { transform: translateY(0.6vmin); box-shadow: 0 0.2vmin 0 rgba(0, 0, 0, 0.25); }
+#laden h1 { font-size: 7vmin; margin-bottom: 0; }
+#laden p { margin: 0.6vmin; }
+#laden .ladenwaren { margin: 1vmin 0; gap: 3vmin; }
+#laden button.ware { font-size: 4.2vmin; min-width: 30vmin; padding: 1.5vmin 3vmin; }
+#laden .knoepfe { margin-top: 1vmin; }

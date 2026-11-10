@@ -21,6 +21,21 @@ const EINSTELLUNGEN = {
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
   ruestungPreis: 120,     // so viele Münzen kostet die Rüstung im Laden
   schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
+  figurPreis: 500,        // so viele Münzen kostet eine neue Figur im Laden
+  // Figuren: jede kann etwas Besonderes. farben = andere Farben als der Junge, extra = Zubehör
+  // sprung = so viel stärker springen, muenzen = so viele Münzen pro Münze, drachen = mal so viele Münzen pro Drache
+  figuren: [
+    { id: "junge", name: "Junge", kann: "Dein erster Held" },
+    { id: "springer", name: "Springer", kann: "Springt richtig gut", sprung: 1.15, extra: "stirnband", zubehoer: "#1c1c1c",
+      farben: { haare: "#1c1c1c", tshirt: "#ffd21f", hose: "#1c1c1c" } },               // schwarz-gelb
+    { id: "ritter", name: "Ritter", kann: "Hat gleich ein Schwert", schwert: true, extra: "umhang", zubehoer: "#d62828",
+      farben: { haare: "#6b3e1f", tshirt: "#f4f4f4", hose: "#d62828" } },               // weiß-rot
+    { id: "panzer", name: "Panzer", kann: "Hat gleich eine Rüstung", ruestung: true, dunkleRuestung: true,
+      farben: { haare: "#1c1c1c", tshirt: "#1c1c1c", hose: "#1c1c1c", schuhe: "#000" } }, // ganz schwarz
+    { id: "jaeger", name: "Drachen-Jäger", kann: "Doppelte Münzen, stark gegen Drachen", muenzen: 2, drachen: 2,
+      extra: "kappe", zubehoer: "#1c1c1c", feder: "#ffd21f",
+      farben: { haare: "#ffd21f", tshirt: "#1c1c1c", hose: "#ffd21f" } },               // schwarz-gelb
+  ],
   drachenBesiegtMuenzen: 50, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Fliegen mit dem Raketen-Rucksack (nur in Leveln mit fliegen: true)
@@ -154,8 +169,34 @@ function levelBauen(L) {
   return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, ziel: laenge };
 }
 
+// ---------- Figuren: welche man hat und welche gerade spielt (merkt sich das Gerät) ----------
+const FIGUR_SPEICHER = "brainimoxFiguren";
+function figurenLaden() {
+  try {
+    const d = JSON.parse(localStorage.getItem(FIGUR_SPEICHER)) || {};
+    return { besitz: Array.isArray(d.besitz) ? d.besitz : ["junge"], aktiv: d.aktiv || "junge" };
+  } catch (e) { return { besitz: ["junge"], aktiv: "junge" }; }
+}
+const figurenStand = figurenLaden();
+function figurenSpeichern() {
+  try { localStorage.setItem(FIGUR_SPEICHER, JSON.stringify(figurenStand)); } catch (e) { /* egal */ }
+}
+function figur() {
+  return EINSTELLUNGEN.figuren.find((f) => f.id === figurenStand.aktiv) || EINSTELLUNGEN.figuren[0];
+}
+function figurWaehlen(id) {
+  figurenStand.aktiv = id;
+  if (!figurenStand.besitz.includes(id)) figurenStand.besitz.push(id);
+  figurenSpeichern();
+  const f = figur();
+  if (spiel) { if (f.schwert) spiel.schwert = true; if (f.ruestung) spiel.ruestung = true; }
+  if (typeof figurNeuMalen === "function") figurNeuMalen();
+}
+
 function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false, ruestung = false) {
   const L = EINSTELLUNGEN.level[levelNr];
+  if (figur().schwert) schwert = true;     // Ritter hat sein Schwert immer dabei
+  if (figur().ruestung) ruestung = true;   // Panzer hat seine Rüstung immer an
   spiel = {
     levelNr,
     L,
@@ -181,7 +222,7 @@ function springen() {
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   if (spiel.L.fliegen) { spiel.halten = true; return; } // Rakete an
   if (spiel.amBoden) {
-    spiel.vy = -EINSTELLUNGEN.sprungKraft;
+    spiel.vy = -EINSTELLUNGEN.sprungKraft * (figur().sprung || 1);
     spiel.amBoden = false;
     spiel.halten = true;
     spiel.haltZeit = 0;
@@ -264,6 +305,7 @@ function ladenAnzeigen() {
     w.knopf.disabled = spiel[was];
     w.knopf.textContent = spiel[was] ? `${w.name}\nHast du schon ✓` : `${w.name}\n${w.preis()} 🪙`;
   }
+  figurenAnzeigen();
 }
 function ladenOeffnen() {
   if (!spiel || spiel.fertig || spiel.pause || spiel.angehalten) return;
@@ -292,6 +334,40 @@ for (const [was, w] of Object.entries(WAREN)) {
     ladenAnzeigen();
     ladenMeldung.textContent = w.gekauft;
   });
+}
+// Figuren im Laden: kaufen (500 Münzen) oder eine gekaufte auswählen
+const figurenBox = document.getElementById("ladenFiguren");
+function figurenAnzeigen() {
+  figurenBox.innerHTML = "";
+  for (const f of EINSTELLUNGEN.figuren) {
+    const knopf = document.createElement("button");
+    knopf.className = "figur";
+    const hat = figurenStand.besitz.includes(f.id), aktiv = figurenStand.aktiv === f.id;
+    if (aktiv) knopf.classList.add("aktiv");
+    if (typeof figurBild === "function") {
+      const img = document.createElement("img");
+      img.src = figurBild(f);
+      img.alt = "";
+      knopf.appendChild(img);
+    }
+    const text = document.createElement("span");
+    text.textContent = `${f.name}\n${f.kann}\n${aktiv ? "Spielst du ✓" : hat ? "Nehmen" : EINSTELLUNGEN.figurPreis + " 🪙"}`;
+    knopf.appendChild(text);
+    knopf.addEventListener("click", () => {
+      if (aktiv) return;
+      if (!hat) {
+        if (spiel.muenzen < EINSTELLUNGEN.figurPreis) {
+          ladenMeldung.textContent = `Du brauchst ${EINSTELLUNGEN.figurPreis} Münzen. Dir fehlen noch ${EINSTELLUNGEN.figurPreis - spiel.muenzen}.`;
+          return;
+        }
+        spiel.muenzen -= EINSTELLUNGEN.figurPreis;
+      }
+      figurWaehlen(f.id);
+      ladenAnzeigen();
+      ladenMeldung.textContent = `Jetzt spielst du: ${f.name}! ${f.kann}.`;
+    });
+    figurenBox.appendChild(knopf);
+  }
 }
 ladenKnopf.addEventListener("click", ladenOeffnen);
 document.getElementById("ladenZurueck").addEventListener("click", ladenSchliessen);
@@ -398,14 +474,14 @@ const MANN_X = 160;       // wo das Männchen auf dem Bildschirm steht
 function aktualisieren(dt) {
   pauseKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
   ladenKnopf.classList.toggle("versteckt", !spiel || spiel.fertig);
-  schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig);
+  schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig || imLaden);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
   s.x += s.L.tempo * dt;
   if (s.L.fliegen) {
     // Raketen-Rucksack: drücken = hoch, loslassen = langsam runter
     const E = EINSTELLUNGEN;
-    s.vy += (s.halten ? -E.raketenKraft + E.flugSchwerkraft : E.flugSchwerkraft) * dt;
+    s.vy += (s.halten ? -E.raketenKraft * (figur().sprung || 1) + E.flugSchwerkraft : E.flugSchwerkraft) * dt;
     s.vy = Math.max(-E.flugTempoMax, Math.min(E.flugTempoMax, s.vy));
     s.y += s.vy * dt;
     if (s.y < 130) { s.y = 130; s.vy = Math.max(0, s.vy); }  // nicht oben aus dem Bild fliegen
@@ -430,9 +506,10 @@ function aktualisieren(dt) {
   for (const m of s.level.muenzen) {
     if (!m.weg && Math.abs(m.x - s.x) < 28 && m.y > oben - 14 && m.y < s.y + 14) {
       m.weg = true;
-      s.muenzen++;
+      const plus = figur().muenzen || 1;   // Jäger bekommt mehr
+      s.muenzen += plus;
       effekt("muenze", m.x, m.y);
-      s.texte.push({ text: "+1", x: m.x, y: m.y, zeit: 0.7 });
+      s.texte.push({ text: "+" + plus, x: m.x, y: m.y, zeit: 0.7 });
     }
   }
   const autsch = (anzahl = EINSTELLUNGEN.autschMuenzen) => {
@@ -508,7 +585,8 @@ function aktualisieren(dt) {
       k.x = k.ax + (MANN_X - k.ax) * k.t;
       k.y = k.ay + (k.zielY - k.ay) * Math.min(1, k.t);
       // Mit dem Schwert: Kugel ist nah genug → zurück zum Drachen hauen!
-      if (s.hauZeit > 0 && k.x > MANN_X - 20 && k.x < MANN_X + 95 && k.y > s.y - 120 && k.y < s.y + 20) {
+      const reichweite = figur().drachen ? 160 : 95;  // Jäger trifft die Kugel schon von weiter weg
+      if (s.hauZeit > 0 && k.x > MANN_X - 20 && k.x < MANN_X + reichweite && k.y > s.y - 120 && k.y < s.y + 20) {
         d.zustand = "zurueck";
         k.zx = k.x; k.zy = k.y; k.t = 0;
         s.texte.push({ text: "+0 Zack! ⚔️", x: s.x, y: s.y - 100, zeit: 1 });
@@ -536,8 +614,9 @@ function aktualisieren(dt) {
       if (k.t >= 1) {
         d.zustand = "besiegt"; d.fall = 0;
         effekt("drache", s.x - MANN_X + d.sx, d.sy);
-        s.muenzen += EINSTELLUNGEN.drachenBesiegtMuenzen;
-        s.texte.push({ text: `+${EINSTELLUNGEN.drachenBesiegtMuenzen} Drache besiegt!`, x: s.x - MANN_X + d.sx, y: d.sy - 30, zeit: 1.5 });
+        const plus = EINSTELLUNGEN.drachenBesiegtMuenzen * (figur().drachen || 1);
+        s.muenzen += plus;
+        s.texte.push({ text: `+${plus} Drache besiegt!`, x: s.x - MANN_X + d.sx, y: d.sy - 30, zeit: 1.5 });
       }
     } else if (d.zustand === "besiegt") {
       // Drache trudelt nach unten und verschwindet
