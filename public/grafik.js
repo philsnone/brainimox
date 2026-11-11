@@ -502,6 +502,158 @@ function zeichneKiste() {
   ctx.stroke();
 }
 
+// Kleiner Baum für das Sonnen-Level (links unten bei 0,0): Stamm und runde Krone
+function zeichneBaum() {
+  ctx.fillStyle = verlauf(-26, 0, ["#9a6a3a", "#6e4520"]);
+  ctx.beginPath(); ctx.roundRect(15, -26, 10, 26, 3); ctx.fill();
+  const krone = [[20, -40, 17], [9, -32, 11], [31, -32, 11], [20, -50, 10]];
+  ctx.fillStyle = "#2f8f3a";
+  ctx.beginPath(); for (const [x, y, r] of krone) { ctx.moveTo(x + r, y + 2); ctx.arc(x, y + 2, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = verlauf(-60, -22, ["#7fd95a", "#43b04a"]);
+  ctx.beginPath(); for (const [x, y, r] of krone) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.beginPath(); ctx.ellipse(14, -50, 5, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+}
+
+// Abgrund (links oben bei 0,0 = Grasoberkante): dunkles Loch mit Erdwänden und Graskanten
+function zeichneAbgrund() {
+  const b = EINSTELLUNGEN.abgrundBreite, tief = 420;
+  ctx.fillStyle = verlauf(0, 160, ["#4a2f18", "#1b120a", "#050302"]);
+  ctx.fillRect(0, -2, b, tief);
+  // Erdwände links und rechts
+  ctx.fillStyle = verlauf(0, 120, ["#8a5a2b", "#3a2412"]);
+  ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(10, 10); ctx.lineTo(7, tief); ctx.lineTo(0, tief); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(b, -2); ctx.lineTo(b - 10, 10); ctx.lineTo(b - 7, tief); ctx.lineTo(b, tief); ctx.fill();
+  // Gras hängt über die Kante
+  ctx.fillStyle = "#6fcf4a";
+  ctx.beginPath(); ctx.ellipse(2, 0, 9, 6, 0, 0, Math.PI * 2); ctx.ellipse(b - 2, 0, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// Helle Sonne mit Strahlen (Mitte bei 0,0)
+function zeichneSonne() {
+  const glanz = ctx.createRadialGradient(0, 0, 20, 0, 0, 95);
+  glanz.addColorStop(0, "rgba(255,250,200,0.9)");
+  glanz.addColorStop(1, "rgba(255,240,150,0)");
+  ctx.fillStyle = glanz;
+  ctx.beginPath(); ctx.arc(0, 0, 95, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffd84a";
+  for (let i = 0; i < 12; i++) {
+    const w = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(w - 0.12) * 44, Math.sin(w - 0.12) * 44);
+    ctx.lineTo(Math.cos(w) * 78, Math.sin(w) * 78);
+    ctx.lineTo(Math.cos(w + 0.12) * 44, Math.sin(w + 0.12) * 44);
+    ctx.fill();
+  }
+  const kern = ctx.createRadialGradient(-10, -10, 5, 0, 0, 42);
+  kern.addColorStop(0, "#fffbe0"); kern.addColorStop(0.6, "#ffe14d"); kern.addColorStop(1, "#ffb81a");
+  ctx.fillStyle = kern;
+  ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
+}
+
+// Herbst-Busch (links unten bei 0,0): rund, rot-orange Blätter, ein paar Beeren
+function zeichneBusch() {
+  const teile = [[12, -16, 13], [27, -24, 16], [42, -15, 12], [26, -12, 15]];
+  ctx.fillStyle = "#8a2b0e";
+  ctx.beginPath(); for (const [x, y, r] of teile) { ctx.moveTo(x + r, y + 3); ctx.arc(x, y + 3, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = verlauf(-40, 0, ["#ff9a3c", "#d9480f", "#a8320c"]);
+  ctx.beginPath(); for (const [x, y, r] of teile) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); } ctx.fill();
+  // kleine Blätter-Lichter
+  ctx.fillStyle = "rgba(255,214,120,0.75)";
+  for (const [x, y] of [[20, -30], [33, -33], [10, -22], [44, -22], [28, -20]]) {
+    ctx.beginPath(); ctx.ellipse(x, y, 3.2, 1.8, -0.6, 0, Math.PI * 2); ctx.fill();
+  }
+  // Beeren
+  ctx.fillStyle = "#5b1a8f";
+  for (const [x, y] of [[16, -10], [36, -8], [24, -26]]) { ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill(); }
+}
+
+// Rohr aus Kupfer (links unten bei 0,0): 56 breit, 60 hoch, oben ein dicker Rand
+function zeichneRohr() {
+  const kupfer = (x1, x2) => {
+    const g = ctx.createLinearGradient(x1, 0, x2, 0);
+    g.addColorStop(0, "#5e3620"); g.addColorStop(0.25, "#b8743f"); g.addColorStop(0.45, "#f0c08c");
+    g.addColorStop(0.7, "#a8653a"); g.addColorStop(1, "#4a2a16");
+    return g;
+  };
+  ctx.fillStyle = kupfer(4, 52);
+  ctx.fillRect(4, -48, 48, 48);
+  // Ringe mit Nieten
+  ctx.fillStyle = "rgba(60,30,15,0.45)";
+  ctx.fillRect(4, -26, 48, 4);
+  ctx.fillStyle = "#3b2414";
+  for (const x of [10, 22, 34, 46]) { ctx.beginPath(); ctx.arc(x, -24, 1.8, 0, Math.PI * 2); ctx.fill(); }
+  // dicker Rand oben
+  ctx.fillStyle = kupfer(-2, 58);
+  ctx.beginPath(); ctx.roundRect(-2, -60, 60, 14, 4); ctx.fill();
+  ctx.fillStyle = "#2a160b";
+  ctx.beginPath(); ctx.ellipse(28, -59, 25, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#3b2414";
+  for (const x of [4, 52]) { ctx.beginPath(); ctx.arc(x, -53, 2, 0, Math.PI * 2); ctx.fill(); }
+}
+
+// Fleischfressende Pflanze (Mitte oben bei 0,0): lila Fangmaul mit Stacheln, Stängel mit Herbstblättern
+function zeichnePflanze(zu) {
+  // Stängel
+  ctx.strokeStyle = "#5d6b22"; ctx.lineWidth = 7; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(0, 40); ctx.bezierCurveTo(-6, 70, 6, 95, 0, 130); ctx.stroke();
+  ctx.fillStyle = "#d9731a";
+  ctx.beginPath(); ctx.ellipse(-12, 72, 12, 5, 0.5, 0, Math.PI * 2); ctx.ellipse(12, 92, 12, 5, -0.5, 0, Math.PI * 2); ctx.fill();
+  // zwei Fanglappen, unten am Stängel festgewachsen
+  const lappen = (seite) => {
+    ctx.save();
+    ctx.translate(0, 44);
+    ctx.rotate(seite * (zu ? 0.06 : 0.5));
+    // Stacheln am Rand
+    ctx.fillStyle = "#fff3c4";
+    for (let i = 0; i < 6; i++) {
+      const y = -40 + i * 6;
+      ctx.beginPath(); ctx.moveTo(seite * 3, y); ctx.lineTo(-seite * 7, y - 4); ctx.lineTo(seite * 3, y + 3); ctx.fill();
+    }
+    // außen lila
+    ctx.fillStyle = verlauf(-44, 0, ["#9b4dca", "#5a1f7a"]);
+    ctx.beginPath(); ctx.ellipse(seite * 13, -22, 14, 23, 0, 0, Math.PI * 2); ctx.fill();
+    // innen rosa Maul
+    ctx.fillStyle = "#ff5c8a";
+    ctx.beginPath(); ctx.ellipse(seite * 5, -22, 5, 19, 0, 0, Math.PI * 2); ctx.fill();
+    // Punkte
+    ctx.fillStyle = "rgba(255,230,120,0.8)";
+    for (const [px, py] of [[17, -30], [20, -16], [11, -10]]) { ctx.beginPath(); ctx.arc(seite * px, py, 2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  };
+  lappen(-1);
+  lappen(1);
+  // böse Augen
+  for (const sx of [-1, 1]) {
+    const ax = sx * (zu ? 13 : 24), ay = zu ? 14 : 18;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ax, ay, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(ax - sx * 1.5, ay + 1, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#2a0d3a"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ax - 6 * sx, ay - 4); ctx.lineTo(ax + 5 * sx, ay - 9); ctx.stroke(); // böse Augenbraue
+  }
+}
+
+// Herbstbäume für den Hintergrund (Streifen, wiederholt sich nahtlos)
+function zeichneHerbstBaeume(B) {
+  const farben = [["#ffb703", "#e85d04"], ["#d00000", "#9d0208"], ["#f48c06", "#dc2f02"], ["#ffd166", "#f4a261"], ["#e76f51", "#b23a1a"]];
+  for (let i = 0; i < 7; i++) {
+    const x = 50 + i * (B / 7) + ((i * 37) % 40), gross = 0.75 + ((i * 53) % 10) / 22;
+    const [hell, dunkel] = farben[i % farben.length];
+    ctx.save();
+    ctx.translate(x, 0); ctx.scale(gross, gross);
+    ctx.fillStyle = "#6b4226";
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-4, -70); ctx.lineTo(4, -70); ctx.lineTo(6, 0); ctx.fill();
+    ctx.strokeStyle = "#6b4226"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, -55); ctx.lineTo(-18, -78); ctx.moveTo(0, -60); ctx.lineTo(16, -84); ctx.stroke();
+    const krone = [[0, -100, 32], [-26, -84, 22], [26, -86, 22], [-12, -122, 20], [14, -118, 22]];
+    ctx.fillStyle = dunkel;
+    ctx.beginPath(); for (const [kx, ky, r] of krone) { ctx.moveTo(kx + r, ky + 4); ctx.arc(kx, ky + 4, r, 0, Math.PI * 2); } ctx.fill();
+    ctx.fillStyle = verlauf(-145, -60, [hell, dunkel]);
+    ctx.beginPath(); for (const [kx, ky, r] of krone) { ctx.moveTo(kx + r, ky); ctx.arc(kx, ky, r, 0, Math.PI * 2); } ctx.fill();
+    ctx.restore();
+  }
+}
+
 // Riesen-Hotdog für die Wiese (links unten bei 0,0): Brötchen, Würstchen, Senf
 function zeichneHotdog() {
   const b = 104, h = 48;
@@ -733,6 +885,18 @@ function alleBilderMalen(szene) {
   textur(szene, "kiste", 50, 50, 3, 47, zeichneKiste);
   textur(szene, "schneemann", 48, 74, 24, 70, zeichneSchneemann);
   textur(szene, "hotdog", 114, 56, 5, 52, zeichneHotdog);
+  textur(szene, "baum", 46, 66, 3, 62, zeichneBaum);
+  textur(szene, "abgrund", EINSTELLUNGEN.abgrundBreite + 20, 432, 10, 12, zeichneAbgrund, 1.5);
+  textur(szene, "sonne", 200, 200, 100, 100, zeichneSonne, 1.5);
+  textur(szene, "busch", 60, 46, 2, 42, zeichneBusch);
+  textur(szene, "rohr", 68, 66, 6, 62, zeichneRohr);
+  textur(szene, "pflanze", 64, 132, 32, 0, () => zeichnePflanze(false));
+  textur(szene, "pflanzeZu", 64, 132, 32, 0, () => zeichnePflanze(true));
+  textur(szene, "herbstbaeume", 900, 180, 0, 172, () => zeichneHerbstBaeume(900), 1.5);
+  textur(szene, "blatt", 14, 10, 7, 5, () => {
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.ellipse(0, 0, 6, 3.5, 0.4, 0, Math.PI * 2); ctx.fill();
+  }, 2);
   textur(szene, "muenze", 28, 28, 14, 14, zeichneMuenze);
   textur(szene, "frage", 62, 62, 31, 31, () => zeichneFrageBlock(false));
   textur(szene, "frageLeer", 62, 62, 31, 31, () => zeichneFrageBlock(true));
@@ -834,6 +998,11 @@ function szeneBauen(szene) {
   G.erde = streifen(szene, "erde0", 300, BODEN + 22, 5, 1);
   G.gras = streifen(szene, "gras0", 240, BODEN, 6, 1);
   G.blumen = streifen(szene, "blumen", 970, BODEN, 7, 1);
+  G.sonne = bild(szene, "sonne").setScrollFactor(0, 0).setDepth(0.5).setVisible(false);
+  G.herbstbaeume = streifen(szene, "herbstbaeume", 900, BODEN + 2, 3.5, 0.6);
+  G.blaetter = [];
+  const blattFarben = [0xe85d04, 0xffb703, 0xd00000, 0xf4a261];
+  for (let i = 0; i < 26; i++) G.blaetter.push(bild(szene, "blatt").setScrollFactor(0, 1).setDepth(8).setTint(blattFarben[i % 4]).setVisible(false));
   G.flocken = [];
   for (let i = 0; i < 70; i++) G.flocken.push(bild(szene, "flocke").setScrollFactor(0, 1).setDepth(8).setVisible(false));
 
@@ -890,6 +1059,9 @@ function levelAufbauen(szene, LV, L) {
     k._bild = neu(L.schneemaenner
       ? bild(szene, "schneemann", k.x + k.b / 2, BODEN).setDepth(20)
       : k.hotdog ? bild(szene, "hotdog", k.x, BODEN).setDepth(20)
+      : k.baum ? bild(szene, "baum", k.x, BODEN).setDepth(20)
+      : k.busch ? bild(szene, "busch", k.x, BODEN).setDepth(20)
+      : k.rohr ? bild(szene, "rohr", k.x, BODEN).setDepth(20)
       : bild(szene, "kiste", k.x, BODEN).setDepth(20));
     k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale((1.1 * k.b) / 44 / TS, 1 / TS));
   }
@@ -902,6 +1074,8 @@ function levelAufbauen(szene, LV, L) {
   const fy = BODEN - EINSTELLUNGEN.fragezeichenHoehe;
   for (const f of LV.fragen) f._bild = neu(bild(szene, "frage", f.x, f.y || fy).setDepth(23));
   for (const g of LV.gewitter) g._bild = neu(bild(szene, "gewitter", g.x, g.y).setDepth(24));
+  for (const g of LV.abgruende) g._bild = neu(bild(szene, "abgrund", g.x, BODEN - 4).setDepth(7.5));
+  for (const p of LV.pflanzen) p._bild = neu(bild(szene, "pflanze", p.x, p.rohrOben).setDepth(19.5));
   G.fahne = neu(bild(szene, "fahne", LV.ziel, BODEN).setDepth(18));
   G.drachen.forEach((d) => d.destroy());
   G.kugeln.forEach((k) => { k.bild.destroy(); k.text.destroy(); });
@@ -953,6 +1127,8 @@ function malen(szene) {
   G.erdeFlaeche.setSize(W, hoehe);
   if (L.blumen) streifenMalen(G.blumen, kamera, "blumen");
   else G.blumen.bilder.forEach((b) => b.setVisible(false));
+  if (L.herbst) streifenMalen(G.herbstbaeume, kamera, "herbstbaeume");
+  else G.herbstbaeume.bilder.forEach((b) => b.setVisible(false));
 
   // Wolken (bewegen sich langsamer = sieht weit weg aus)
   G.wolken.forEach((w, i) => {
@@ -967,6 +1143,15 @@ function malen(szene) {
     const fx = ((i * 131 - kamera * 0.6 + Math.sin(t + i) * 10) % W + W) % W;
     const fy = ((i * 53 + t * (30 + (i % 5) * 8)) % (BODEN + obenRand)) - obenRand;
     f.setPosition(fx, fy).setScale((2 + (i % 3)) / 4.5 / ANKER.flocke.ts);
+  });
+
+  // Herbst: bunte Blätter fallen und schaukeln
+  G.blaetter.forEach((b, i) => {
+    b.setVisible(!!L.herbst);
+    if (!L.herbst) return;
+    const bx = ((i * 157 - kamera * 0.8 + Math.sin(t * 1.3 + i) * 25) % W + W) % W;
+    const by = ((i * 61 + t * (35 + (i % 4) * 9)) % (BODEN + obenRand)) - obenRand;
+    b.setPosition(bx, by).setRotation(Math.sin(t * 2 + i) * 1.2).setScale((1 + (i % 3) * 0.25) / ANKER.blatt.ts);
   });
 
   const nichtsZeigen = !spiel;
@@ -1009,6 +1194,7 @@ function malen(szene) {
       m._fluegel[0].setPosition(m.x - 12, m.y - 24).setRotation(schlag);
       m._fluegel[1].setPosition(m.x + 12, m.y - 24).setRotation(-schlag);
     }
+    if (m.reingefallen) m._bild.y = BODEN + m.umfallen * m.umfallen * 500; // fällt in den Abgrund
     if (m.lebt) {
       m._bild.setTexture("monster" + lauf);
     } else {
@@ -1017,6 +1203,18 @@ function malen(szene) {
       m._bild.setAlpha(Math.max(0, 1 - m.umfallen / 1.2));
       m._bild.setRotation(Math.min(1, m.umfallen * 3) * Math.PI / 2);
     }
+  }
+  // Fleischfressende Pflanzen: kommen aus dem Rohr hoch und schnappen
+  for (const p of LV.pflanzen) {
+    const v = !p.weg && p.raus > 0.01 && sichtbar(p.x);
+    p._bild.setVisible(v);
+    if (!v) continue;
+    const hoch = EINSTELLUNGEN.pflanzenHoehe * p.raus;
+    const key = p.beissZeit > 0 || Math.sin(t * 7 + p.x) > 0.55 ? "pflanzeZu" : "pflanze";
+    if (p._bild.texture.key !== key) p._bild.setTexture(key);
+    const ts = ANKER[key].ts;
+    // nur das Stück zeigen, das aus dem Rohr guckt (Rest steckt im Rohr)
+    p._bild.setPosition(p.x, p.rohrOben - hoch).setCrop(0, 0, 64 * ts, (hoch + 6) * ts);
   }
   // Münzen (drehen sich ein bisschen)
   for (const m of LV.muenzen) {
@@ -1032,6 +1230,10 @@ function malen(szene) {
     if (f.fertig && f._bild.texture.key !== "frageLeer") f._bild.setTexture("frageLeer").setScale(1 / ANKER.frageLeer.ts);
     else if (!f.fertig) f._bild.setScale((1 + Math.sin(t * 5) * 0.04) / ANKER.frage.ts);
   }
+  for (const g of LV.abgruende) g._bild.setVisible(sichtbar(g.x) || sichtbar(g.x + g.b));
+  // Sonne oben rechts am Himmel, die Strahlen drehen sich langsam
+  G.sonne.setVisible(!!L.sonne);
+  if (L.sonne) G.sonne.setPosition(W - 150, 95).setRotation(t * 0.15);
   for (const g of LV.gewitter) {
     const v = sichtbar(g.x);
     g._bild.setVisible(v);

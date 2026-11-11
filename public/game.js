@@ -46,11 +46,17 @@ const EINSTELLUNGEN = {
   flugSchwerkraft: 1300,  // so schnell sinkst du, wenn du loslässt
   flugTempoMax: 420,      // schneller geht es nicht hoch oder runter
   gewitterMuenzen: 2,     // Münzen weg, wenn du eine Gewitterwolke berührst
+  abgrundBreite: 110,     // so breit sind die Abgründe im Sonnen-Level
+  pflanzenMuenzen: 20,    // Münzen weg, wenn dich die fleischfressende Pflanze beißt (Herbst)
+  pflanzenHoehe: 100,     // so weit kommt die Pflanze aus dem Rohr raus
+  pflanzenTakt: 3.2,      // nach so vielen Sekunden kommt die Pflanze wieder raus
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
   // schneemaenner: true = Schneemänner statt Kisten
   // fliegen: true = Level in der Luft: Raketen-Rucksack, Gewitterwolken statt Kisten
+  // sonne: true = helle Sonne am Himmel, abgruende: true = kleine Bäume und Abgründe (reinfallen = Level von vorn, 0 Münzen)
+  // herbst: true = Herbstbäume im Hintergrund, Büsche und Rohre mit fleischfressender Pflanze
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
   level: [
@@ -66,6 +72,12 @@ const EINSTELLUNGEN = {
     { name: "Luft", tempo: 300, monsterTempo: 50, monster: 0.6, drachen: 10, fliegen: true,
       himmel: "#6ec3ff", boden: "#ffffff", erde: "#e6f4ff", wolken: "rgba(255,255,255,0.95)",
       berge: "#cfe9ff", huegel: "#f4faff" },
+    { name: "Sonne", tempo: 280, monsterTempo: 50, monster: 0.7, drachen: 3, sonne: true, abgruende: true,
+      himmel: "#4fb3ff", boden: "#8be05a", erde: "#b07a3c", wolken: "rgba(255,255,255,0.75)",
+      berge: "#c3e6a8", huegel: "#9fdc6a" },
+    { name: "Herbst", tempo: 290, monsterTempo: 55, monster: 1.0, drachen: 4, herbst: true,
+      himmel: "#8cc2e6", boden: "#b8b43c", erde: "#8a5a2b", wolken: "rgba(255,255,255,0.8)",
+      berge: "#d9ab78", huegel: "#c9963f" },
   ],
   farben: {
     // Spielfigur
@@ -117,6 +129,8 @@ function levelBauen(L) {
   }
   const nahAnFrage = (x) => fragen.some((f) => Math.abs(f.x - x) < 300);
   const gewitter = [];
+  const abgruende = [];
+  const pflanzen = [];
 
   let x = 700;
   let n = 0;
@@ -140,7 +154,35 @@ function levelBauen(L) {
       x += 330 + ((n * 137) % 220);
     }
   }
-  while (!L.fliegen && x < laenge - 400) {
+  while ((L.abgruende || L.herbst) && x < laenge - 400) {
+    // Sonnen-Level: kleine Bäume und Abgründe. Herbst-Level: Büsche und Rohre mit Pflanze.
+    // Dazwischen ab und zu ein Monster oder Münzen.
+    if (!nahAnFrage(x)) {
+      const art = n % 3;
+      if (art === 0) {
+        if (L.herbst) kisten.push({ x, b: 52, h: 40, rand: 6, busch: true });
+        else kisten.push({ x, b: 40, h: 56, rand: 6, baum: true });
+        const mitte = x + kisten[kisten.length - 1].b / 2;
+        for (let k = -2; k <= 2; k++) muenzen.push({ x: mitte + k * 32, y: BODEN - 130 + Math.abs(k) * 18, weg: false });
+      } else if (art === 1 && L.herbst) {
+        // Rohr: aus dem kommt immer wieder eine fleischfressende Pflanze raus
+        kisten.push({ x, b: 56, h: 60, rand: 4, rohr: true });
+        pflanzen.push({ x: x + 28, rohrOben: BODEN - 60, zeit: (n * 1.3) % EINSTELLUNGEN.pflanzenTakt, raus: 0, weg: false });
+        for (let k = -1; k <= 1; k++) muenzen.push({ x: x + 28 + k * 32, y: BODEN - 112 + Math.abs(k) * 14, weg: false });
+      } else if (art === 1) {
+        abgruende.push({ x, b: EINSTELLUNGEN.abgrundBreite });
+        // Münzbogen über dem Abgrund: wer drüberspringt, sammelt sie ein
+        for (let k = -1; k <= 1; k++) muenzen.push({ x: x + EINSTELLUNGEN.abgrundBreite / 2 + k * 32, y: BODEN - 110 + Math.abs(k) * 14, weg: false });
+      } else if (zufallFest(n) < L.monster) {
+        monster.push({ x: x + 60, b: 40, h: 38, lebt: true, umfallen: 0 });
+      } else {
+        for (let k = 0; k < 4; k++) muenzen.push({ x: x + k * 40, y: BODEN - 30, weg: false });
+      }
+    }
+    n++;
+    x += 380 + ((n * 137) % 260);
+  }
+  while (!L.fliegen && !L.abgruende && !L.herbst && x < laenge - 400) {
     if (!nahAnFrage(x)) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
@@ -172,7 +214,7 @@ function levelBauen(L) {
     for (const f of fragen) if (start > f.x - 1400 && start < f.x + 200) start = f.x + 250;
     drachen.push({ start, zustand: "wartet" });
   }
-  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, ziel: laenge };
+  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, abgruende, pflanzen, ziel: laenge };
 }
 
 // ---------- Figuren: welche man hat und welche gerade spielt (merkt sich das Gerät) ----------
@@ -494,7 +536,7 @@ function aktualisieren(dt) {
   schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig || imLaden);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
-  s.x += s.L.tempo * dt;
+  if (!s.faellt) s.x += s.L.tempo * dt;   // wer in den Abgrund fällt, läuft nicht mehr weiter
   if (s.L.fliegen) {
     // Raketen-Rucksack: drücken = hoch, loslassen = langsam runter
     const E = EINSTELLUNGEN;
@@ -513,7 +555,20 @@ function aktualisieren(dt) {
     if (s.saltoZeit > 0) { schwerkraft *= EINSTELLUNGEN.saltoSchwerkraft; s.saltoZeit -= dt; }
     s.vy += schwerkraft * dt;
     s.y += s.vy * dt;
-    if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; s.saltoGemacht = false; s.saltoZeit = 0; }
+    // Abgrund: steht man mit dem ganzen Körper drüber, gibt es keinen Boden mehr
+    if (s.y >= BODEN && !s.faellt && s.level.abgruende.some((g) => s.x > g.x + 14 && s.x < g.x + g.b - 14)) {
+      s.faellt = true;
+      s.amBoden = false;
+    }
+    if (s.faellt) {
+      if (s.y > BODEN + 170) {
+        // Reingefallen: das Level fängt nochmal von vorn an, mit 0 Münzen
+        neuesSpiel(s.levelNr, 0, s.schwert, s.ruestung);
+        spiel.texte.push({ text: "Reingefallen! Nochmal von vorn", x: spiel.x + 120, y: BODEN - 150, zeit: 2.5 });
+        effekt("level", 0, 0);
+        return;
+      }
+    } else if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; s.saltoGemacht = false; s.saltoZeit = 0; }
   }
   if (s.autschZeit > 0) s.autschZeit -= dt;
   if (s.hauZeit > 0) s.hauZeit -= dt;
@@ -530,17 +585,40 @@ function aktualisieren(dt) {
       s.texte.push({ text: "+" + plus, x: m.x, y: m.y, zeit: 0.7 });
     }
   }
-  const autsch = (anzahl = EINSTELLUNGEN.autschMuenzen) => {
+  const autsch = (anzahl = EINSTELLUNGEN.autschMuenzen, wort = "Autsch!") => {
     s.autschZeit = 1;
     if (s.ruestung) { s.texte.push({ text: "+0 Pling! 🛡️", x: s.x, y: oben - 10, zeit: 1 }); return; }
     const weg = Math.min(s.muenzen, anzahl);
     s.muenzen -= weg;
-    s.texte.push({ text: weg ? `Autsch! −${weg}` : "Autsch!", x: s.x, y: oben - 10, zeit: 1 });
+    s.texte.push({ text: weg ? `${wort} −${weg}` : wort, x: s.x, y: oben - 10, zeit: 1 });
   };
   for (const k of s.level.kisten) {
     const r = k.rand || 0;
     if (s.autschZeit <= 0 && rechts > k.x + r && links < k.x + k.b - r && s.y > BODEN - k.h + 4) {
       autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : k.hotdog ? EINSTELLUNGEN.hotdogMuenzen : EINSTELLUNGEN.autschMuenzen);
+    }
+  }
+  // Fleischfressende Pflanzen (Herbst): kommen immer wieder aus dem Rohr. Wer sie berührt, wird gebissen!
+  for (const p of s.level.pflanzen) {
+    if (p.weg) continue;
+    p.zeit += dt;
+    const phase = (p.zeit % EINSTELLUNGEN.pflanzenTakt) / EINSTELLUNGEN.pflanzenTakt;
+    // drin – kommt hoch – ist draußen – geht wieder rein
+    p.raus = phase < 0.4 ? 0 : phase < 0.5 ? (phase - 0.4) / 0.1 : phase < 0.85 ? 1 : phase < 0.95 ? (0.95 - phase) / 0.1 : 0;
+    if (p.beissZeit > 0) p.beissZeit -= dt;
+    if (p.raus < 0.25) continue;
+    const kopf = p.rohrOben - EINSTELLUNGEN.pflanzenHoehe * p.raus;
+    // Schwert: Pflanze wird abgehauen
+    if (s.hauZeit > 0 && p.x - 20 < rechts + 55 && p.x + 20 > links && s.y > kopf - 40 && oben < p.rohrOben) {
+      p.weg = true;
+      effekt("monster", p.x, kopf);
+      s.muenzen += EINSTELLUNGEN.monsterMuenzen;
+      s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen} Zack!`, x: p.x, y: kopf - 20, zeit: 1 });
+      continue;
+    }
+    if (s.autschZeit <= 0 && rechts > p.x - 18 && links < p.x + 18 && s.y > kopf + 6 && oben < p.rohrOben) {
+      p.beissZeit = 0.4;
+      autsch(EINSTELLUNGEN.pflanzenMuenzen, "Gebissen!");
     }
   }
   // Gewitterwolken in der Luft: nicht berühren!
@@ -554,6 +632,8 @@ function aktualisieren(dt) {
   for (const m of s.level.monster) {
     if (!m.lebt) { m.umfallen += dt; continue; }
     m.x -= s.L.monsterTempo * dt;
+    // Monster laufen auch in den Abgrund und fallen rein
+    if (!m.flug && s.level.abgruende.some((g) => m.x > g.x + 10 && m.x < g.x + g.b - 10)) { m.lebt = false; m.reingefallen = true; continue; }
     if (m.flug) { m.zeit += dt; m.y = m.basisY + Math.sin(m.zeit * 2.5) * 25; } // flattert auf und ab
     const fuss = m.flug ? m.y : BODEN;
     const kopf = fuss - m.h;
