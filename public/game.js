@@ -12,10 +12,10 @@ const EINSTELLUNGEN = {
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
   levelSekunden: 100,     // wie lange das Level ungefähr dauert
   aufgaben: 5,            // wie viele Matheaufgaben im Level
-  bonusMuenzen: 200,      // Münzen für eine richtige Antwort am ?-Block
+  bonusMuenzen: 30,       // Münzen für eine richtige Antwort am ?-Block
   autschMuenzen: 1,       // Münzen weg, wenn man gegen eine Kiste oder ein Monster läuft
-  monsterMuenzen: 100,    // Münzen, wenn man ein Monster besiegt (draufspringen oder Schwert)
-  hotdogMuenzen: 500,     // Münzen weg, wenn man einen Riesen-Hotdog berührt (Wiese)
+  monsterMuenzen: 20,     // Münzen, wenn man ein Monster besiegt (draufspringen oder Schwert)
+  hotdogMuenzen: 10,      // Münzen weg, wenn man einen Riesen-Hotdog berührt (Wiese)
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
@@ -36,7 +36,7 @@ const EINSTELLUNGEN = {
       extra: "kappe", zubehoer: "#1c1c1c", feder: "#ffd21f",
       farben: { haare: "#ffd21f", tshirt: "#1c1c1c", hose: "#ffd21f" } },               // schwarz-gelb
   ],
-  drachenBesiegtMuenzen: 50, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
+  drachenBesiegtMuenzen: 10, // Münzen, wenn du einen Drachen mit dem Schwert besiegst
   drachenFlugzeit: 1.6,   // wie lange die Drachen-Kugel zu dir fliegt (kleiner = schneller)
   // Fliegen mit dem Raketen-Rucksack (nur in Leveln mit fliegen: true)
   raketenKraft: 2700,     // so stark schiebt die Rakete nach oben, solange du drückst
