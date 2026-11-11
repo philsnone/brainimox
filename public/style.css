@@ -224,3 +224,29 @@ button.figur:active { transform: translateY(0.6vmin); box-shadow: 0 0.2vmin 0 rg
 #laden .ladenwaren { margin: 1vmin 0; gap: 3vmin; }
 #laden button.ware { font-size: 4.2vmin; min-width: 30vmin; padding: 1.5vmin 3vmin; }
 #laden .knoepfe { margin-top: 1vmin; }
+
+/* ---------- Entwicklermodus ---------- */
+.knoepfe-zeile { display: flex; gap: 3vmin; flex-wrap: wrap; justify-content: center; }
+.pinfeld { min-width: 36vmin; letter-spacing: 2vmin; }
+.pintasten { display: grid; grid-template-columns: repeat(3, auto); gap: 1.5vmin; margin-top: 1vmin; }
+.pintasten .taste { width: 12vmin; height: 10vmin; max-width: none; font-size: 6vmin; }
+#entwickler { overflow-y: auto; justify-content: flex-start; padding: 3vmin 2vmin; box-sizing: border-box; }
+#entwickler > * { flex-shrink: 0; }
+#entwickler h1 { font-size: 7vmin; margin-bottom: 0; }
+#entwickler p { margin: 0.6vmin; }
+#entwickler .knoepfe { margin: 1.5vmin 0 0; }
+.wahlreihe { display: flex; gap: 2vmin; flex-wrap: wrap; justify-content: center; margin-bottom: 1vmin; }
+button.wahl {
+  font: inherit;
+  font-size: 4vmin;
+  font-weight: 700;
+  padding: 1.5vmin 3vmin;
+  border: 0.6vmin solid transparent;
+  border-radius: 3vmin;
+  background: rgba(255, 255, 255, 0.92);
+  color: #22324a;
+  box-shadow: 0 0.8vmin 0 rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+button.wahl.aktiv { border-color: var(--gruen); background: #b8f5b8; }
+button.wahl:active { transform: translateY(0.6vmin); box-shadow: 0 0.2vmin 0 rgba(0, 0, 0, 0.25); }
