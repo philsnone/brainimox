@@ -43,7 +43,9 @@ function dateiLaden(file, fertig) {
 const datenDir = process.env.DATA_DIR || path.join(__dirname, "data");
 const listenDatei = path.join(datenDir, "bestenliste.json");
 const MAX_EINTRAEGE = 500;
-const MAX_MUENZEN = 5000;
+// Höchstwert gegen Unsinn. Früher 5000 – das war zu wenig, seit Monster 100 und
+// ?-Blöcke 200 Münzen geben. Gute Spieler kamen darüber und wurden abgelehnt.
+const MAX_MUENZEN = 10000000;
 let bestenliste = [];
 try {
   bestenliste = JSON.parse(fs.readFileSync(listenDatei, "utf8"));
