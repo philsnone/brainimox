@@ -20,7 +20,41 @@
       <button class="gross" data-klasse="4">Klasse 4</button>
     </div>
     <p class="klein">Tippen = Springen · Länger drücken = höher · P = Pause</p>
-    <button class="klein-knopf" id="bestenlisteKnopf">🏆 Bestenliste</button>
+    <div class="knoepfe-zeile">
+      <button class="klein-knopf" id="bestenlisteKnopf">🏆 Bestenliste</button>
+      <button class="klein-knopf" id="entwicklerKnopf">🔧 Entwicklermodus</button>
+    </div>
+  </div>
+
+  <!-- Entwicklermodus: erst PIN eingeben -->
+  <div id="pin" class="schicht versteckt">
+    <p class="titel-klein">🔧 Entwicklermodus</p>
+    <p>PIN eingeben:</p>
+    <div id="pinFeld" class="namenfeld pinfeld"> </div>
+    <p class="meldung klein" id="pinMeldung"></p>
+    <div id="pinTasten" class="pintasten"></div>
+    <button class="klein-knopf" id="pinZurueck">Zurück</button>
+  </div>
+
+  <!-- Entwicklermodus: Level, Figur, Schwert und Rüstung wählen -->
+  <div id="entwickler" class="schicht versteckt">
+    <h1 class="titel-mittel">🔧 Entwicklermodus</h1>
+    <p class="klein">Level</p>
+    <div class="wahlreihe" id="entwicklerLevel"></div>
+    <p class="klein">Figur</p>
+    <div class="ladenfiguren" id="entwicklerFiguren"></div>
+    <p class="klein">Extras und Klasse</p>
+    <div class="wahlreihe">
+      <button class="wahl" id="entwicklerSchwert">⚔️ Schwert</button>
+      <button class="wahl" id="entwicklerRuestung">🛡️ Rüstung</button>
+      <button class="wahl" data-entwickler-klasse="3">Klasse 3</button>
+      <button class="wahl" data-entwickler-klasse="4">Klasse 4</button>
+    </div>
+    <p class="klein">Im Entwicklermodus gibt es keinen Eintrag in die Bestenliste.</p>
+    <div class="knoepfe">
+      <button class="gross" id="entwicklerStart">Los ▶</button>
+    </div>
+    <button class="klein-knopf" id="entwicklerZurueck">Zurück</button>
   </div>
 
   <!-- Matheaufgabe -->
@@ -90,6 +124,7 @@
   <script src="vendor/phaser.min.js"></script>
   <script src="bestenliste.js"></script>
   <script src="game.js"></script>
+  <script src="entwickler.js"></script>
   <script src="grafik.js"></script>
 </body>
 </html>

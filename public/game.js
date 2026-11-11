@@ -95,6 +95,9 @@ const endeSchicht = document.getElementById("ende");
 
 let spiel = null;         // aktueller Spielstand
 let klasse = 3;
+// Entwicklermodus (siehe entwickler.js): Figur nur für dieses Spiel, ohne Bestenliste
+let entwicklerSpiel = false;
+let entwicklerFigur = null;
 
 // ---------- Level bauen ----------
 function levelBauen(L) {
@@ -182,9 +185,11 @@ function figurenSpeichern() {
   try { localStorage.setItem(FIGUR_SPEICHER, JSON.stringify(figurenStand)); } catch (e) { /* egal */ }
 }
 function figur() {
-  return EINSTELLUNGEN.figuren.find((f) => f.id === figurenStand.aktiv) || EINSTELLUNGEN.figuren[0];
+  const id = entwicklerFigur || figurenStand.aktiv;
+  return EINSTELLUNGEN.figuren.find((f) => f.id === id) || EINSTELLUNGEN.figuren[0];
 }
 function figurWaehlen(id) {
+  entwicklerFigur = null;   // im Laden gewählt: gilt wieder die normale Figur
   figurenStand.aktiv = id;
   if (!figurenStand.besitz.includes(id)) figurenStand.besitz.push(id);
   figurenSpeichern();
@@ -263,6 +268,8 @@ window.addEventListener("keyup", (e) => {
 document.querySelectorAll("[data-klasse]").forEach((knopf) => {
   knopf.addEventListener("click", () => {
     klasse = Number(knopf.dataset.klasse);
+    entwicklerSpiel = false;
+    if (entwicklerFigur) { entwicklerFigur = null; if (typeof figurNeuMalen === "function") figurNeuMalen(); }
     startSchicht.classList.add("versteckt");
     neuesSpiel();
   });
@@ -342,7 +349,7 @@ function figurenAnzeigen() {
   for (const f of EINSTELLUNGEN.figuren) {
     const knopf = document.createElement("button");
     knopf.className = "figur";
-    const hat = figurenStand.besitz.includes(f.id), aktiv = figurenStand.aktiv === f.id;
+    const hat = figurenStand.besitz.includes(f.id), aktiv = figur().id === f.id;
     if (aktiv) knopf.classList.add("aktiv");
     if (typeof figurBild === "function") {
       const img = document.createElement("img");
@@ -380,6 +387,7 @@ document.getElementById("nochmal").addEventListener("click", () => {
     // alle Level geschafft: Name eintippen, dann Bestenliste, dann zum Start
     const muenzen = spiel.muenzen;
     spiel = null;
+    if (entwicklerSpiel) return startSchicht.classList.remove("versteckt"); // Entwicklermodus: keine Bestenliste
     nameEingeben(muenzen, klasse, () => startSchicht.classList.remove("versteckt"));
   }
 });
@@ -660,7 +668,8 @@ function aktualisieren(dt) {
     s.fertig = true;
     document.getElementById("endeTitel").textContent = "Alle Level geschafft! 🏆";
     document.getElementById("ergebnis").textContent = `Du hast ${s.muenzen} Münzen gesammelt! 🪙`;
-    document.getElementById("nochmal").textContent = "Name eintragen ✏️";
+    document.getElementById("nochmal").textContent = entwicklerSpiel ? "Zum Start" : "Name eintragen ✏️";
+    if (entwicklerSpiel) document.getElementById("ergebnis").textContent += " (Entwicklermodus: kein Eintrag in die Bestenliste)";
     setTimeout(() => endeSchicht.classList.remove("versteckt"), 600);
   }
 }
