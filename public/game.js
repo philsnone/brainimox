@@ -19,9 +19,9 @@ const EINSTELLUNGEN = {
   schneemannMuenzen: 3,   // Münzen weg, wenn man einen Schneemann berührt
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
-  ruestungPreis: 120,     // so viele Münzen kostet die Rüstung im Laden
-  schwertPreis: 99,       // so viele Münzen kostet das Schwert im Laden
-  figurPreis: 500,        // so viele Münzen kostet eine neue Figur im Laden
+  ruestungPreis: 60,      // so viele Münzen kostet die Rüstung im Laden
+  schwertPreis: 50,       // so viele Münzen kostet das Schwert im Laden
+  figurPreis: 100,        // so viele Münzen kostet eine neue Figur im Laden
   // Figuren: jede kann etwas Besonderes. farben = andere Farben als der Junge, extra = Zubehör
   // sprung = so viel stärker springen, muenzen = so viele Münzen pro Münze, drachen = mal so viele Münzen pro Drache
   figuren: [
@@ -342,7 +342,7 @@ for (const [was, w] of Object.entries(WAREN)) {
     ladenMeldung.textContent = w.gekauft;
   });
 }
-// Figuren im Laden: kaufen (500 Münzen) oder eine gekaufte auswählen
+// Figuren im Laden: kaufen (Preis siehe figurPreis) oder eine gekaufte auswählen
 const figurenBox = document.getElementById("ladenFiguren");
 function figurenAnzeigen() {
   figurenBox.innerHTML = "";
