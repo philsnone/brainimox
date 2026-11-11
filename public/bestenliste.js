@@ -72,6 +72,7 @@ async function namenSpeichern() {
   if (!name) { meldung.textContent = "Tippe zuerst deinen Namen 🙂"; return; }
   meldung.textContent = "Speichere …";
   let meineId = null;
+  let meinPlatz = null;
   try {
     const antwort = await fetch("/api/bestenliste", {
       method: "POST",
@@ -81,16 +82,17 @@ async function namenSpeichern() {
     const d = await antwort.json();
     if (!antwort.ok) { meldung.textContent = d.fehler || "Hat nicht geklappt."; return; }
     meineId = d.id;
+    meinPlatz = d.platz;
   } catch (e) {
     meldung.textContent = "Keine Verbindung. Nochmal probieren?";
     return;
   }
   namenSchicht.classList.add("versteckt");
-  listeZeigen(meineId, danach);
+  listeZeigen(meineId, danach, meinPlatz);
 }
 
 // Tabelle anzeigen (meineId wird hervorgehoben)
-async function listeZeigen(meineId, weiter) {
+async function listeZeigen(meineId, weiter, meinPlatz = null) {
   danach = weiter;
   const tabelle = document.getElementById("tabelle");
   tabelle.innerHTML = "<tr><td>Lade …</td></tr>";
@@ -113,6 +115,12 @@ async function listeZeigen(meineId, weiter) {
       const medaille = ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
       for (const wert of [medaille, e.name, `${e.muenzen} 🪙`, e.klasse]) zeile.insertCell().textContent = wert;
     });
+    // Nicht unter den besten 20? Dann trotzdem zeigen, auf welchem Platz man ist.
+    if (meineId && meinPlatz && !liste.some((e) => e.id === meineId) && ergebnis) {
+      const zeile = tabelle.insertRow();
+      zeile.className = "ich";
+      for (const wert of [`${meinPlatz}.`, eingabe.trim(), `${ergebnis.muenzen} 🪙`, ergebnis.klasse]) zeile.insertCell().textContent = wert;
+    }
   } catch (e) {
     tabelle.innerHTML = "<tr><td>Keine Verbindung 😕</td></tr>";
   }
