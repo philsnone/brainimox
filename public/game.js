@@ -10,6 +10,9 @@ const EINSTELLUNGEN = {
   // Ungefähr: antippen 90 · 0,2 s 145 · 0,3 s 180 (reicht für ?-Block) · 0,4 s 220 · 0,6 s 270 (ganz hoch)
   fragezeichenHoehe: 290, // wie hoch die ?-Blöcke in der Luft hängen
   schwerkraft: 1700,      // wie schnell es wieder runterfällt
+  saltoKraft: 480,        // Salto: in der Luft nochmal drücken = nochmal hoch und einmal rumdrehen
+  saltoZeit: 0.55,        // so lange (Sekunden) dauert die Drehung
+  saltoSchwerkraft: 0.55, // während dem Salto fällt man langsamer (fliegt weiter)
   levelSekunden: 100,     // wie lange das Level ungefähr dauert
   aufgaben: 5,            // wie viele Matheaufgaben im Level
   bonusMuenzen: 30,       // Münzen für eine richtige Antwort am ?-Block
@@ -231,6 +234,12 @@ function springen() {
     spiel.amBoden = false;
     spiel.halten = true;
     spiel.haltZeit = 0;
+  } else if (!spiel.saltoGemacht) {
+    // Salto! Einmal pro Sprung: nochmal hoch, einmal rumdrehen und ein Stück weiter fliegen
+    spiel.vy = -EINSTELLUNGEN.saltoKraft * (figur().sprung || 1);
+    spiel.saltoGemacht = true;
+    spiel.saltoZeit = EINSTELLUNGEN.saltoZeit;
+    spiel.haltZeit = EINSTELLUNGEN.haltenZeit; // Halten hilft beim Salto nicht mehr
   }
 }
 // Solange man gedrückt hält, zieht die Schwerkraft schwächer und der Junge fliegt höher.
@@ -501,9 +510,10 @@ function aktualisieren(dt) {
       schwerkraft *= EINSTELLUNGEN.haltenSchwerkraft;
       s.haltZeit += dt;
     }
+    if (s.saltoZeit > 0) { schwerkraft *= EINSTELLUNGEN.saltoSchwerkraft; s.saltoZeit -= dt; }
     s.vy += schwerkraft * dt;
     s.y += s.vy * dt;
-    if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; }
+    if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; s.saltoGemacht = false; s.saltoZeit = 0; }
   }
   if (s.autschZeit > 0) s.autschZeit -= dt;
   if (s.hauZeit > 0) s.hauZeit -= dt;

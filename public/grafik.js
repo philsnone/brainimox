@@ -1042,7 +1042,12 @@ function malen(szene) {
   // Der Junge
   const blinkt = spiel.autschZeit > 0 && Math.floor(spiel.autschZeit * 10) % 2 === 0;
   const jx = spiel.x;
-  G.junge.setVisible(!blinkt).setPosition(jx, spiel.y);
+  // Salto: der Junge dreht sich einmal ganz rum (um die Mitte vom Körper)
+  const dreh = spiel.saltoZeit > 0 ? (1 - spiel.saltoZeit / EINSTELLUNGEN.saltoZeit) * Math.PI * 2 : 0;
+  const drehen = (b) => dreh
+    ? b.setOrigin(0.5, 0.5).setPosition(jx, spiel.y - 38).setRotation(dreh)
+    : b.setOrigin(ANKER.jungeLuft.x, ANKER.jungeLuft.y).setPosition(jx, spiel.y).setRotation(0);
+  drehen(G.junge.setVisible(!blinkt));
   if (!spiel.amBoden) G.junge.setTexture("jungeLuft");
   else {
     const phase = ((spiel.x / 18) % (Math.PI * 2)) / (Math.PI * 2);
@@ -1064,9 +1069,9 @@ function malen(szene) {
     });
   }
   if (spiel.ruestung && !blinkt) {
-    G.ruestung.setVisible(true).setPosition(jx, spiel.y).setTint(figur().dunkleRuestung ? 0x3a3a44 : 0xffffff);
+    drehen(G.ruestung.setVisible(true).setTint(figur().dunkleRuestung ? 0x3a3a44 : 0xffffff));
   }
-  if (spiel.schwert && !blinkt) {
+  if (spiel.schwert && !blinkt && !dreh) {
     // zwei Schwerter über Kreuz auf dem Rücken
     G.rueckenSchwerter[0].setVisible(true).setPosition(jx - 12, spiel.y - 74).setRotation(Math.PI - 0.6);
     G.rueckenSchwerter[1].setVisible(true).setPosition(jx - 2, spiel.y - 77).setRotation(Math.PI - 0.15);
