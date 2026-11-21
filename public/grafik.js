@@ -354,6 +354,103 @@ function zeichneDrache(schlag) {
   ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(14, -38 - schlag * 26); ctx.lineTo(30, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
+// Endboss: halb Drache, halb Monster, rot und lila (Füße unten Mitte bei 0,0), schaut nach links.
+// arme = wie hoch die Arme sind (0 = unten, 1 = hoch zum Werfen)
+function zeichneEndboss(arme) {
+  const lila = "#8e44ad", lilaHell = "#b06fd6", lilaDunkel = "#5b2378";
+  const rot = "#d62828", rotDunkel = "#8c1111";
+  ctx.lineJoin = "round";
+  // Flügel hinten (rot, wie bei einer Fledermaus)
+  const fluegel = (sx, hoch) => {
+    ctx.fillStyle = verlauf(-220, -90, [rot, rotDunkel]);
+    ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(20, -120);
+    ctx.lineTo(20 + sx * 40, -200 - hoch);
+    ctx.lineTo(20 + sx * 95, -175 - hoch);
+    ctx.quadraticCurveTo(20 + sx * 80, -150, 20 + sx * 95, -130);
+    ctx.quadraticCurveTo(20 + sx * 70, -125, 20 + sx * 75, -105);
+    ctx.quadraticCurveTo(20 + sx * 45, -110, 30, -95);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(60,0,0,0.5)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, -120); ctx.lineTo(20 + sx * 95, -175 - hoch); ctx.moveTo(20, -120); ctx.lineTo(20 + sx * 95, -130); ctx.stroke();
+  };
+  fluegel(1, 0); fluegel(-0.55, 10);
+  // Schwanz mit Stacheln und gelber Spitze
+  ctx.fillStyle = rot; ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(45, -55); ctx.quadraticCurveTo(100, -40, 118, -70); ctx.lineTo(112, -45); ctx.quadraticCurveTo(95, -15, 45, -25); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath(); ctx.moveTo(118, -70); ctx.lineTo(132, -78); ctx.lineTo(124, -58); ctx.closePath(); ctx.fill();
+  // Beine mit Krallen
+  for (const bx of [-22, 30]) {
+    ctx.fillStyle = lilaDunkel;
+    ctx.beginPath(); ctx.roundRect(bx - 14, -32, 28, 30, 8); ctx.fill();
+    ctx.fillStyle = "#fff3c4";
+    for (const k of [-10, 0, 10]) { ctx.beginPath(); ctx.moveTo(bx + k - 4, -2); ctx.lineTo(bx + k - 7, 3); ctx.lineTo(bx + k + 1, -1); ctx.fill(); }
+  }
+  // Körper: großes lila Monster
+  ctx.fillStyle = verlauf(-170, -20, [lilaHell, lila, lilaDunkel]);
+  ctx.beginPath(); ctx.moveTo(-55, -25); ctx.lineTo(-55, -115); ctx.arc(5, -115, 60, Math.PI, 0); ctx.lineTo(65, -25); ctx.quadraticCurveTo(5, -10, -55, -25); ctx.fill();
+  // Bauch mit Streifen (wie ein Drache)
+  ctx.fillStyle = "#e8b4f0";
+  ctx.beginPath(); ctx.ellipse(0, -60, 34, 36, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#c58bd3"; ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-28 + i * 2, -82 + i * 14); ctx.quadraticCurveTo(0, -76 + i * 14, 28 - i * 2, -82 + i * 14); ctx.stroke(); }
+  // rote Zacken auf dem Rücken und Kopf
+  ctx.fillStyle = rot;
+  for (let i = 0; i < 6; i++) {
+    const w = Math.PI * (1.15 + i * 0.13), x = 5 + Math.cos(w) * 60, y = -115 + Math.sin(w) * 60;
+    ctx.beginPath(); ctx.moveTo(x - 7, y + 3); ctx.lineTo(x + Math.cos(w) * 16, y + Math.sin(w) * 16); ctx.lineTo(x + 7, y + 3); ctx.fill();
+  }
+  // Hörner
+  ctx.fillStyle = "#ffd23f"; ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-30, -160); ctx.quadraticCurveTo(-55, -185, -42, -205); ctx.quadraticCurveTo(-38, -180, -16, -168); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(20, -170); ctx.quadraticCurveTo(15, -200, 32, -212); ctx.quadraticCurveTo(30, -190, 36, -168); ctx.fill(); ctx.stroke();
+  // Drachenschnauze (rot) mit Zähnen
+  ctx.fillStyle = verlauf(-140, -95, [rot, rotDunkel]); ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-40, -135); ctx.lineTo(-95, -122); ctx.quadraticCurveTo(-104, -112, -95, -102); ctx.lineTo(-40, -95); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#2a0d0d";
+  ctx.beginPath(); ctx.moveTo(-92, -110); ctx.lineTo(-45, -112); ctx.lineTo(-45, -104); ctx.lineTo(-92, -106); ctx.fill();
+  ctx.fillStyle = "#fff";
+  for (let i = 0; i < 5; i++) {
+    const x = -88 + i * 9;
+    ctx.beginPath(); ctx.moveTo(x, -111); ctx.lineTo(x + 3, -103); ctx.lineTo(x + 6, -111); ctx.fill();
+  }
+  ctx.fillStyle = rotDunkel;
+  ctx.beginPath(); ctx.arc(-92, -121, 2.5, 0, Math.PI * 2); ctx.fill();
+  // Rauch aus der Nase
+  ctx.fillStyle = "rgba(120,120,120,0.45)";
+  for (const [x, y, r] of [[-104, -130, 6], [-112, -140, 8], [-118, -153, 10]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+  // zwei große böse Monster-Augen
+  for (const [ax, ay] of [[-30, -148], [0, -150]]) {
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ax, ay, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffd23f"; ctx.beginPath(); ctx.arc(ax - 4, ay + 1, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.ellipse(ax - 4, ay + 1, 2.5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = "#2a0d3a"; ctx.lineWidth = 5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-46, -170); ctx.lineTo(-18, -160); ctx.moveTo(-12, -161); ctx.lineTo(16, -172); ctx.stroke();
+  // Arme (hoch zum Werfen oder unten)
+  ctx.strokeStyle = lilaDunkel; ctx.lineWidth = 16;
+  for (const [sx, sy] of [[-48, -90], [52, -90]]) {
+    const ex = sx + (sx < 0 ? -14 : 14), ey = sy - 20 - arme * 70;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.fillStyle = lila; ctx.beginPath(); ctx.arc(ex, ey, 11, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// Großer Steinklotz, den der Endboss wirft (Mitte bei 0,0; die Aufgabe steht als Text darauf)
+function zeichneKlotz() {
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath(); ctx.roundRect(-44, -30, 92, 66, 10); ctx.fill();
+  ctx.fillStyle = verlauf(-34, 34, ["#b9b2a8", "#8d857a", "#6b645b"]);
+  ctx.beginPath(); ctx.roundRect(-46, -34, 92, 66, 10); ctx.fill();
+  ctx.strokeStyle = "#4e4740"; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = "rgba(60,50,40,0.5)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-40, -10); ctx.lineTo(-30, -4); ctx.lineTo(-34, 8); ctx.moveTo(30, 20); ctx.lineTo(38, 10); ctx.lineTo(44, 14); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath(); ctx.roundRect(-40, -30, 40, 8, 4); ctx.fill();
+}
+
 // Feuerkugel (die Aufgabe steht als Text darüber)
 function zeichneKugel() {
   // Feuerschweif
@@ -1022,6 +1119,9 @@ function alleBilderMalen(szene) {
     textur(szene, "drache" + i, 130, 96, 56, 70, () => zeichneDrache(Math.sin((i / DRACHE_BILDER) * Math.PI * 2)));
   }
   textur(szene, "kugel", 104, 60, 30, 30, zeichneKugel);
+  textur(szene, "endboss", 270, 240, 130, 226, () => zeichneEndboss(0), 2);
+  textur(szene, "endbossWurf", 270, 240, 130, 226, () => zeichneEndboss(1), 2);
+  textur(szene, "klotz", 100, 76, 50, 40, zeichneKlotz);
   textur(szene, "kiste", 50, 50, 3, 47, zeichneKiste);
   textur(szene, "schneemann", 48, 74, 24, 70, zeichneSchneemann);
   textur(szene, "hotdog", 114, 56, 5, 52, zeichneHotdog);
