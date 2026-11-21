@@ -56,6 +56,7 @@ const EINSTELLUNGEN = {
   // fliegen: true = Level in der Luft: Raketen-Rucksack, Gewitterwolken statt Kisten
   // sonne: true = helle Sonne am Himmel, abgruende: true = kleine Bäume und Abgründe (reinfallen = Level von vorn, 0 Münzen)
   // schwertLiegt: true = hier steckt irgendwo ein Schwert im Boden: drüberlaufen und man hat es
+  // monsterAufgabe: true = wer ein Monster berührt, bekommt danach eine Rechenaufgabe
   // herbst: true = Herbstbäume im Hintergrund, Büsche und Rohre mit fleischfressender Pflanze
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
@@ -72,7 +73,7 @@ const EINSTELLUNGEN = {
     { name: "Luft", tempo: 300, monsterTempo: 50, monster: 0.6, drachen: 10, fliegen: true,
       himmel: "#6ec3ff", boden: "#ffffff", erde: "#e6f4ff", wolken: "rgba(255,255,255,0.95)",
       berge: "#cfe9ff", huegel: "#f4faff" },
-    { name: "Sonne", tempo: 280, monsterTempo: 50, monster: 0.7, drachen: 3, sonne: true, abgruende: true,
+    { name: "Sonne", tempo: 280, monsterTempo: 50, monster: 1.2, drachen: 3, sonne: true, abgruende: true, monsterAufgabe: true,
       himmel: "#4fb3ff", boden: "#8be05a", erde: "#b07a3c", wolken: "rgba(255,255,255,0.75)",
       berge: "#c3e6a8", huegel: "#9fdc6a" },
     { name: "Herbst", tempo: 290, monsterTempo: 55, monster: 1.0, drachen: 4, herbst: true,
@@ -494,12 +495,12 @@ function aufgabeMachen() {
 }
 
 // drache = true: Aufgabe kommt vom Drachen (falsch = Münzen weg, richtig = nichts passiert)
-function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0) {
+function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0, monster = false) {
   const dieses = spiel;
   dieses.pause = true;
-  document.getElementById("frage").textContent = (drache ? "🐉 " : "") + `${a.text} = ?`;
+  document.getElementById("frage").textContent = (drache ? "🐉 " : monster ? "👾 " : "") + `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
-  meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥` : "";
+  meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥` : monster ? (trefferWeg ? `Autsch, ein Monster! −${trefferWeg} Münze` : "Ein Monster! Deine Rüstung schützt dich 🛡️") : "";
   const box = document.getElementById("antworten");
   box.innerHTML = "";
   let beantwortet = false;
@@ -513,6 +514,9 @@ function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0) {
       if (zahl === a.loesung && drache) {
         knopf.classList.add("richtig");
         meldung.textContent = "Richtig! Der Drache fliegt weg 🐉";
+      } else if (zahl === a.loesung && monster) {
+        knopf.classList.add("richtig");
+        meldung.textContent = "Richtig! Weiter geht's 👍";
       } else if (zahl === a.loesung) {
         knopf.classList.add("richtig");
         meldung.textContent = `Super! +${EINSTELLUNGEN.bonusMuenzen} Münzen`;
@@ -648,6 +652,8 @@ function aktualisieren(dt) {
   // Monster: laufen auf dich zu. Von oben draufspringen = Monster fällt um!
   for (const m of s.level.monster) {
     if (!m.lebt) { m.umfallen += dt; continue; }
+    // Sonnen-Level: Monster laufen erst los, wenn sie fast im Bild sind (sonst fallen alle vorher in die Abgründe)
+    if (s.L.abgruende && !m.los) { if (m.x - s.x > W + 100) continue; m.los = true; }
     m.x -= s.L.monsterTempo * dt;
     // Monster laufen auch in den Abgrund und fallen rein
     if (!m.flug && s.level.abgruende.some((g) => m.x > g.x + 10 && m.x < g.x + g.b - 10)) { m.lebt = false; m.reingefallen = true; continue; }
@@ -672,7 +678,13 @@ function aktualisieren(dt) {
       s.muenzen += EINSTELLUNGEN.monsterMuenzen;
       s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen}`, x: m.x, y: kopf - 20, zeit: 1 });
     } else if (s.autschZeit <= 0) {
+      const vorher = s.muenzen;
       autsch();
+      if (s.L.monsterAufgabe) {
+        // Sonnen-Level: nach dem Autsch kommt eine Rechenaufgabe
+        aufgabeZeigen(false, aufgabeMachen(), vorher - s.muenzen, true);
+        return;
+      }
     }
   }
   // Drachen: fliegen von rechts rein und schießen eine Kugel mit einer Matheaufgabe auf dich.
