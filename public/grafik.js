@@ -75,7 +75,7 @@ function glied(ax, ay, bx, by, cx, cy, farbe1, farbe2, dicke) {
 
 // Der Junge: orange Haare, blaues T-Shirt, grüne Hose. Füße sind bei 0,0.
 // fig = welche Figur (andere Farben und Zubehör wie Stirnband, Umhang, Kappe)
-function zeichneJunge(lauf, inLuft, fig = figur()) {
+function zeichneJunge(lauf, inLuft, fig = figur(), mitSchwert = false) {
   const F = Object.assign({}, EINSTELLUNGEN.farben, fig.farben || {});
   const x = 0, y = 0;
   const s = inLuft ? 0.9 : Math.sin(lauf);        // Schwung von Armen und Beinen
@@ -180,15 +180,26 @@ function zeichneJunge(lauf, inLuft, fig = figur()) {
     ctx.beginPath(); ctx.moveTo(x - 6, kopfY - 9); ctx.quadraticCurveTo(x - 12, kopfY - 20, x - 4, kopfY - 22); ctx.stroke();
   }
 
-  arm(s * 0.9, false);
+  // vorderer Arm: mit Schwert hält er still nach vorn (Hand genau am Schwertgriff), sonst schwingt er mit
+  arm(mitSchwert ? SCHWERT_ARM : s * 0.9, false);
 }
 
-// Alle Bilder vom Jungen (für die gerade gewählte Figur) malen
+// Wenn man ein Schwert hat, steht der vordere Arm so (Hand bei x 9, y -30 = am Schwertgriff)
+const SCHWERT_ARM = Math.asin(1 / 3);
+// Alle Bilder vom Jungen (für die gerade gewählte Figur) malen: einmal normal, einmal mit Schwert in der Hand
 function jungeMalen(szene) {
-  for (let i = 0; i < LAUF_BILDER; i++) {
-    textur(szene, "junge" + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false));
+  for (const [vorne, mitSchwert] of [["junge", false], ["jungeS", true]]) {
+    for (let i = 0; i < LAUF_BILDER; i++) {
+      textur(szene, vorne + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false, figur(), mitSchwert));
+    }
+    textur(szene, vorne + "Luft", 70, 92, 35, 84, () => zeichneJunge(0, true, figur(), mitSchwert));
   }
-  textur(szene, "jungeLuft", 70, 92, 35, 84, () => zeichneJunge(0, true));
+  // Faust, die über dem Schwertgriff liegt (sieht aus, als ob er ihn festhält)
+  const haut = Object.assign({}, EINSTELLUNGEN.farben, figur().farben || {}).haut;
+  textur(szene, "faust", 10, 10, 5, 5, () => {
+    ctx.fillStyle = haut; ctx.beginPath(); ctx.arc(0, 0, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = mischen(haut, -0.25); ctx.lineWidth = 0.8; ctx.stroke();
+  });
 }
 // Wird aufgerufen, wenn man im Laden eine andere Figur nimmt
 function figurNeuMalen() {
@@ -1020,6 +1031,7 @@ function szeneBauen(szene) {
   G.rakete = bild(szene, "rakete").setDepth(29.4);
   G.flammen = [bild(szene, "flamme").setDepth(29.3), bild(szene, "flamme").setDepth(29.3)];
   G.schwert = bild(szene, "schwert").setDepth(31);
+  G.faust = bild(szene, "faust").setDepth(31.5).setVisible(false);
   G.schwung = szene.add.graphics().setDepth(32);
 
   // Funken und Staub
@@ -1169,6 +1181,7 @@ function malen(szene) {
   G.junge.setVisible(!nichtsZeigen);
   G.schatten.setVisible(!nichtsZeigen);
   G.schwert.setVisible(false);
+  G.faust.setVisible(false);
   G.ruestung.setVisible(false);
   G.rakete.setVisible(false);
   G.flammen.forEach((f) => f.setVisible(false));
@@ -1270,10 +1283,11 @@ function malen(szene) {
     ? b.setOrigin(0.5, 0.5).setPosition(jx, spiel.y - 38).setRotation(dreh)
     : b.setOrigin(ANKER.jungeLuft.x, ANKER.jungeLuft.y).setPosition(jx, spiel.y).setRotation(0);
   drehen(G.junge.setVisible(!blinkt));
-  if (!spiel.amBoden) G.junge.setTexture("jungeLuft");
+  const jungeBild = spiel.schwert ? "jungeS" : "junge";   // mit Schwert: Arm hält still
+  if (!spiel.amBoden) G.junge.setTexture(jungeBild + "Luft");
   else {
     const phase = ((spiel.x / 18) % (Math.PI * 2)) / (Math.PI * 2);
-    G.junge.setTexture("junge" + (Math.floor(phase * LAUF_BILDER) % LAUF_BILDER));
+    G.junge.setTexture(jungeBild + (Math.floor(phase * LAUF_BILDER) % LAUF_BILDER));
   }
   const hochOben = Math.min(1, (BODEN - spiel.y) / 250);
   G.schatten.setPosition(jx, BODEN + 1).setScale((1 - hochOben * 0.6) / TS).setAlpha(1 - hochOben * 0.5);
@@ -1300,6 +1314,7 @@ function malen(szene) {
     const hz = spiel.hauZeit;
     const winkel = hz > 0 ? -1.6 + (1 - hz / 0.35) * 2.6 : -0.5;
     G.schwert.setVisible(true).setPosition(jx + 9, spiel.y - 32).setRotation(winkel);
+    G.faust.setVisible(true).setPosition(jx + 9, spiel.y - 30);
     if (hz > 0) {
       // Schwung-Streifen
       G.schwung.lineStyle(4, 0xffffff, 0.7);
