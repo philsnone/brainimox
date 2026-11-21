@@ -23,7 +23,6 @@ const EINSTELLUNGEN = {
   drachenTrefferMuenzen: 5, // Münzen weg, wenn dich die Drachen-Kugel trifft
   drachenMuenzen: 5,      // nochmal Münzen weg, wenn man die Drachen-Aufgabe falsch löst
   ruestungPreis: 60,      // so viele Münzen kostet die Rüstung im Laden
-  schwertPreis: 50,       // so viele Münzen kostet das Schwert im Laden
   figurPreis: 100,        // so viele Münzen kostet eine neue Figur im Laden
   // Figuren: jede kann etwas Besonderes. farben = andere Farben als der Junge, extra = Zubehör
   // sprung = so viel stärker springen, muenzen = so viele Münzen pro Münze, drachen = mal so viele Münzen pro Drache
@@ -56,6 +55,7 @@ const EINSTELLUNGEN = {
   // schneemaenner: true = Schneemänner statt Kisten
   // fliegen: true = Level in der Luft: Raketen-Rucksack, Gewitterwolken statt Kisten
   // sonne: true = helle Sonne am Himmel, abgruende: true = kleine Bäume und Abgründe (reinfallen = Level von vorn, 0 Münzen)
+  // schwertLiegt: true = hier steckt irgendwo ein Schwert im Boden: drüberlaufen und man hat es
   // herbst: true = Herbstbäume im Hintergrund, Büsche und Rohre mit fleischfressender Pflanze
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
@@ -63,7 +63,7 @@ const EINSTELLUNGEN = {
     { name: "Gras", tempo: 230, monsterTempo: 40, monster: 0.9, drachen: 1,
       himmel: "#7ec8ff", boden: "#5bbf4a", erde: "#a8743a", wolken: "rgba(255,255,255,0.85)",
       berge: "#a9d8c0", huegel: "#7cc96a" },
-    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true, hotdogs: true,
+    { name: "Wiese", tempo: 260, monsterTempo: 55, monster: 1.3, drachen: 2, blumen: true, hotdogs: true, schwertLiegt: true,
       himmel: "#9ad3ff", boden: "#7ed957", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)",
       berge: "#b6dcb0", huegel: "#95dd6c" },
     { name: "Schnee", tempo: 290, monsterTempo: 70, monster: 1.8, drachen: 9, schnee: true, schneemaenner: true,
@@ -214,7 +214,18 @@ function levelBauen(L) {
     for (const f of fragen) if (start > f.x - 1400 && start < f.x + 200) start = f.x + 250;
     drachen.push({ start, zustand: "wartet" });
   }
-  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, abgruende, pflanzen, ziel: laenge };
+  // Schwert zum Finden: steckt in einer freien Stelle im Boden (alles drumherum wird weggeräumt)
+  let schwertFund = null;
+  if (L.schwertLiegt) {
+    let sx = laenge * 0.3;
+    if (nahAnFrage(sx)) sx += 320;
+    const frei = (o) => Math.abs((o.x + (o.b || 0) / 2) - sx) > 160;
+    kisten.splice(0, kisten.length, ...kisten.filter(frei));
+    monster.splice(0, monster.length, ...monster.filter((m) => Math.abs(m.x - sx) > 260));
+    muenzen.splice(0, muenzen.length, ...muenzen.filter((m) => Math.abs(m.x - sx) > 60));
+    schwertFund = { x: sx, weg: false };
+  }
+  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, abgruende, pflanzen, schwertFund, ziel: laenge };
 }
 
 // ---------- Figuren: welche man hat und welche gerade spielt (merkt sich das Gerät) ----------
@@ -256,7 +267,7 @@ function neuesSpiel(levelNr = 0, muenzen = 0, schwert = false, ruestung = false)
     vy: 0,
     amBoden: true,
     muenzen,              // Münzen aus dem letzten Level nimmt man mit
-    schwert,              // Schwert gekauft? (behält man fürs nächste Level)
+    schwert,              // Schwert gefunden? (behält man fürs nächste Level)
     ruestung,             // Rüstung gekauft? Dann tut nichts mehr weh (keine Münzen weg)
     hauZeit: 0,           // > 0: der Junge schwingt gerade das Schwert
     autschZeit: 0,
@@ -289,7 +300,7 @@ function springen() {
 function loslassen() {
   if (spiel) spiel.halten = false;
 }
-// Schwert schwingen (nur wenn man eins gekauft hat)
+// Schwert schwingen (nur wenn man eins hat)
 function hauen() {
   if (!spiel || !spiel.schwert || spiel.pause || spiel.angehalten || spiel.fertig) return;
   if (spiel.hauZeit <= 0) spiel.hauZeit = 0.35;
@@ -346,13 +357,11 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && spiel && !spiel.angehalten && !spiel.fertig) pauseUmschalten();
 });
 
-// ---------- Laden: Schwert und Rüstung kaufen (🛒-Knopf oder Taste L, das Spiel wartet solange) ----------
+// ---------- Laden: Rüstung und Figuren kaufen (🛒-Knopf oder Taste L, das Spiel wartet solange) ----------
 const ladenSchicht = document.getElementById("laden");
 const ladenKnopf = document.getElementById("ladenknopf");
 const ladenMeldung = document.getElementById("ladenMeldung");
 const WAREN = {
-  schwert: { knopf: document.getElementById("schwertKaufen"), name: "⚔️ Schwert", preis: () => EINSTELLUNGEN.schwertPreis,
-    gekauft: "Gekauft! Hauen: ⚔️-Knopf oder S." },
   ruestung: { knopf: document.getElementById("ruestungKaufen"), name: "🛡️ Rüstung", preis: () => EINSTELLUNGEN.ruestungPreis,
     gekauft: "Gekauft! Jetzt tut dir nichts mehr weh." },
 };
@@ -597,6 +606,14 @@ function aktualisieren(dt) {
     if (s.autschZeit <= 0 && rechts > k.x + r && links < k.x + k.b - r && s.y > BODEN - k.h + 4) {
       autsch(k.schneemann ? EINSTELLUNGEN.schneemannMuenzen : k.hotdog ? EINSTELLUNGEN.hotdogMuenzen : EINSTELLUNGEN.autschMuenzen);
     }
+  }
+  // Schwert finden (Wiese): drüberlaufen oder drüberspringen, dann hat man es (man kann es nicht verpassen)
+  const fund = s.level.schwertFund;
+  if (fund && !fund.weg && !s.schwert && rechts > fund.x - 14 && links < fund.x + 14) { // auch beim Drüberspringen
+    fund.weg = true;
+    s.schwert = true;
+    effekt("monster", fund.x, BODEN - 40);
+    s.texte.push({ text: "Schwert gefunden! ⚔️", x: s.x + 260, y: BODEN - 170, zeit: 2.5 }); // etwas vor dir, damit man es lesen kann
   }
   // Fleischfressende Pflanzen (Herbst): kommen immer wieder aus dem Rohr. Wer sie berührt, wird gebissen!
   for (const p of s.level.pflanzen) {
