@@ -889,6 +889,11 @@ function alleBilderMalen(szene) {
   textur(szene, "abgrund", EINSTELLUNGEN.abgrundBreite + 20, 432, 10, 12, zeichneAbgrund, 1.5);
   textur(szene, "sonne", 200, 200, 100, 100, zeichneSonne, 1.5);
   textur(szene, "busch", 60, 46, 2, 42, zeichneBusch);
+  textur(szene, "schwertGlanz", 110, 110, 55, 55, () => {
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 52);
+    g.addColorStop(0, "rgba(255,250,200,0.95)"); g.addColorStop(0.4, "rgba(255,220,90,0.5)"); g.addColorStop(1, "rgba(255,210,60,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 52, 0, Math.PI * 2); ctx.fill();
+  }, 1.5);
   textur(szene, "rohr", 68, 66, 6, 62, zeichneRohr);
   textur(szene, "pflanze", 64, 132, 32, 0, () => zeichnePflanze(false));
   textur(szene, "pflanzeZu", 64, 132, 32, 0, () => zeichnePflanze(true));
@@ -1076,6 +1081,11 @@ function levelAufbauen(szene, LV, L) {
   for (const g of LV.gewitter) g._bild = neu(bild(szene, "gewitter", g.x, g.y).setDepth(24));
   for (const g of LV.abgruende) g._bild = neu(bild(szene, "abgrund", g.x, BODEN - 4).setDepth(7.5));
   for (const p of LV.pflanzen) p._bild = neu(bild(szene, "pflanze", p.x, p.rohrOben).setDepth(19.5));
+  if (LV.schwertFund) {
+    // Schwert steckt mit der Spitze im Boden und leuchtet
+    LV.schwertFund._glanz = neu(bild(szene, "schwertGlanz", LV.schwertFund.x, BODEN - 30).setDepth(21.5));
+    LV.schwertFund._bild = neu(bild(szene, "schwert", LV.schwertFund.x, BODEN - 40).setDepth(21.6).setRotation(Math.PI));
+  }
   G.fahne = neu(bild(szene, "fahne", LV.ziel, BODEN).setDepth(18));
   G.drachen.forEach((d) => d.destroy());
   G.kugeln.forEach((k) => { k.bild.destroy(); k.text.destroy(); });
@@ -1202,6 +1212,16 @@ function malen(szene) {
       m._bild.setTexture("monsterUm");
       m._bild.setAlpha(Math.max(0, 1 - m.umfallen / 1.2));
       m._bild.setRotation(Math.min(1, m.umfallen * 3) * Math.PI / 2);
+    }
+  }
+  // Schwert zum Finden: leuchtet und funkelt, bis man es hat
+  const fund = LV.schwertFund;
+  if (fund) {
+    const v = !fund.weg && !spiel.schwert && sichtbar(fund.x);
+    fund._bild.setVisible(v); fund._glanz.setVisible(v);
+    if (v) {
+      fund._bild.setScale(1.35 / ANKER.schwert.ts);
+      fund._glanz.setScale((1 + Math.sin(t * 4) * 0.15) / ANKER.schwertGlanz.ts).setAlpha(0.75 + Math.sin(t * 4) * 0.25);
     }
   }
   // Fleischfressende Pflanzen: kommen aus dem Rohr hoch und schnappen
