@@ -46,6 +46,7 @@ const EINSTELLUNGEN = {
   flugTempoMax: 420,      // schneller geht es nicht hoch oder runter
   gewitterMuenzen: 2,     // Münzen weg, wenn du eine Gewitterwolke berührst
   abgrundBreite: 110,     // so breit sind die Abgründe im Sonnen-Level
+  loewenMuenzen: 2,       // Münzen weg, wenn dich ein Löwe fängt (Dschungel)
   pflanzenMuenzen: 20,    // Münzen weg, wenn dich die fleischfressende Pflanze beißt (Herbst)
   pflanzenHoehe: 100,     // so weit kommt die Pflanze aus dem Rohr raus
   pflanzenTakt: 3.2,      // nach so vielen Sekunden kommt die Pflanze wieder raus
@@ -57,6 +58,9 @@ const EINSTELLUNGEN = {
   // sonne: true = helle Sonne am Himmel, abgruende: true = kleine Bäume und Abgründe (reinfallen = Level von vorn, 0 Münzen)
   // schwertLiegt: true = hier steckt irgendwo ein Schwert im Boden: drüberlaufen und man hat es
   // monsterAufgabe: true = wer ein Monster berührt, bekommt danach eine Rechenaufgabe
+  // monsterWarten: true = Monster laufen erst los, wenn sie fast im Bild sind
+  // dschungel: true = Dschungel mit kleinen Palmen und Löwen (statt Monstern), die auf dich zurennen
+  // grosseBlumen: true = riesige Blumen statt Kisten (drüberspringen!)
   // herbst: true = Herbstbäume im Hintergrund, Büsche und Rohre mit fleischfressender Pflanze
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
@@ -73,12 +77,19 @@ const EINSTELLUNGEN = {
     { name: "Luft", tempo: 300, monsterTempo: 50, monster: 0.6, drachen: 10, fliegen: true,
       himmel: "#6ec3ff", boden: "#ffffff", erde: "#e6f4ff", wolken: "rgba(255,255,255,0.95)",
       berge: "#cfe9ff", huegel: "#f4faff" },
-    { name: "Sonne", tempo: 280, monsterTempo: 50, monster: 1.2, drachen: 3, sonne: true, abgruende: true, monsterAufgabe: true,
+    { name: "Sonne", tempo: 280, monsterTempo: 50, monster: 1.2, drachen: 3, sonne: true, abgruende: true, monsterAufgabe: true, monsterWarten: true,
       himmel: "#4fb3ff", boden: "#8be05a", erde: "#b07a3c", wolken: "rgba(255,255,255,0.75)",
       berge: "#c3e6a8", huegel: "#9fdc6a" },
     { name: "Herbst", tempo: 290, monsterTempo: 55, monster: 1.0, drachen: 4, herbst: true,
       himmel: "#8cc2e6", boden: "#b8b43c", erde: "#8a5a2b", wolken: "rgba(255,255,255,0.8)",
       berge: "#d9ab78", huegel: "#c9963f" },
+    { name: "Blumen", tempo: 290, monsterTempo: 60, monster: 1.4, drachen: 3, blumen: true, grosseBlumen: true,
+      himmel: "#a3d8ff", boden: "#6fd35a", erde: "#9a6b35", wolken: "rgba(255,255,255,0.9)",
+      berge: "#f2c4de", huegel: "#a4e36c" },
+    { name: "Dschungel", tempo: 290, monsterTempo: 150, monster: 1.0, drachen: 3, dschungel: true,
+      monsterAufgabe: true, monsterWarten: true,
+      himmel: "#86cfdc", boden: "#3fae49", erde: "#6b4a2b", wolken: "rgba(255,255,255,0.7)",
+      berge: "#2f7d4a", huegel: "#45a052" },
   ],
   farben: {
     // Spielfigur
@@ -189,6 +200,8 @@ function levelBauen(L) {
         // Kiste mit Münzbogen darüber
         if (L.schneemaenner) kisten.push({ x, b: 44, h: 62, rand: 5, schneemann: true });
         else if (L.hotdogs) kisten.push({ x, b: 104, h: 48, rand: 6, hotdog: true }); // Riesen-Hotdog
+        else if (L.dschungel) kisten.push({ x, b: 40, h: 50, rand: 8, palme: true }); // kleine Palme
+        else if (L.grosseBlumen) kisten.push({ x, b: 57, h: 90, rand: 10, blume: (n / 2) % 4 }); // große Blume
         else kisten.push({ x, b: 44, h: 44 });
         // ab "monster" über 1: manchmal noch ein Monster hinter der Kiste
         if (zufallFest(n + 100) < L.monster - 1) monster.push({ x: x + 230, b: 40, h: 38, lebt: true, umfallen: 0 });
@@ -206,6 +219,8 @@ function levelBauen(L) {
     n++;
     x += 380 + ((n * 137) % 260); // Abstand wechselt, ist aber jedes Mal gleich
   }
+  // Im Dschungel sind alle Monster Löwen (größer und schneller)
+  if (L.dschungel) for (const m of monster) Object.assign(m, { loewe: true, b: 56, h: 46 });
   // Drachen kommen zwischen den ?-Blöcken
   const drachen = [];
   // gleichmäßig verteilt; wenn ein Drache kurz vor einem ?-Block käme, kommt er erst danach
@@ -498,9 +513,13 @@ function aufgabeMachen() {
 function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0, monster = false) {
   const dieses = spiel;
   dieses.pause = true;
-  document.getElementById("frage").textContent = (drache ? "🐉 " : monster ? "👾 " : "") + `${a.text} = ?`;
+  // monster: "monster" oder "loewe" (Aufgabe nach dem Berühren), sonst false
+  const loewe = monster === "loewe";
+  document.getElementById("frage").textContent = (drache ? "🐉 " : loewe ? "🦁 " : monster ? "👾 " : "") + `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
-  meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥` : monster ? (trefferWeg ? `Autsch, ein Monster! −${trefferWeg} Münze` : "Ein Monster! Deine Rüstung schützt dich 🛡️") : "";
+  const wer = loewe ? "Ein Löwe hat dich gefangen!" : "Autsch, ein Monster!";
+  meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥`
+    : monster ? (trefferWeg ? `${wer} −${trefferWeg} ${trefferWeg === 1 ? "Münze" : "Münzen"}` : `${loewe ? "Ein Löwe" : "Ein Monster"}! Deine Rüstung schützt dich 🛡️`) : "";
   const box = document.getElementById("antworten");
   box.innerHTML = "";
   let beantwortet = false;
@@ -653,7 +672,7 @@ function aktualisieren(dt) {
   for (const m of s.level.monster) {
     if (!m.lebt) { m.umfallen += dt; continue; }
     // Sonnen-Level: Monster laufen erst los, wenn sie fast im Bild sind (sonst fallen alle vorher in die Abgründe)
-    if (s.L.abgruende && !m.los) { if (m.x - s.x > W + 100) continue; m.los = true; }
+    if (s.L.monsterWarten && !m.los) { if (m.x - s.x > W + 100) continue; m.los = true; }
     m.x -= s.L.monsterTempo * dt;
     // Monster laufen auch in den Abgrund und fallen rein
     if (!m.flug && s.level.abgruende.some((g) => m.x > g.x + 10 && m.x < g.x + g.b - 10)) { m.lebt = false; m.reingefallen = true; continue; }
@@ -679,10 +698,11 @@ function aktualisieren(dt) {
       s.texte.push({ text: `+${EINSTELLUNGEN.monsterMuenzen}`, x: m.x, y: kopf - 20, zeit: 1 });
     } else if (s.autschZeit <= 0) {
       const vorher = s.muenzen;
-      autsch();
+      if (m.loewe) autsch(EINSTELLUNGEN.loewenMuenzen, "Gefangen!");
+      else autsch();
       if (s.L.monsterAufgabe) {
-        // Sonnen-Level: nach dem Autsch kommt eine Rechenaufgabe
-        aufgabeZeigen(false, aufgabeMachen(), vorher - s.muenzen, true);
+        // Sonne und Dschungel: nach dem Autsch kommt eine Rechenaufgabe
+        aufgabeZeigen(false, aufgabeMachen(), vorher - s.muenzen, m.loewe ? "loewe" : "monster");
         return;
       }
     }

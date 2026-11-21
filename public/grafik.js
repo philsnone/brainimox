@@ -562,6 +562,135 @@ function zeichneSonne() {
   ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
 }
 
+// Große Blume (links unten bei 0,0): Stängel mit Blättern, Blütenblätter in einer Farbe, Mitte gelb-braun
+const BLUMEN_FARBEN = [["#ff6fae", "#e23d86"], ["#ff5a4e", "#c9302c"], ["#ffd23f", "#e0a800"], ["#b48cff", "#7d4fd6"]];
+function zeichneGrosseBlume(n) {
+  const [hell, dunkel] = BLUMEN_FARBEN[n];
+  ctx.scale(1.3, 1.3);   // richtig groß: größer als der Junge
+  const mx = 22, my = -50;
+  // Stängel und Blätter
+  ctx.strokeStyle = "#2f8a2f"; ctx.lineWidth = 5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(mx, 0); ctx.quadraticCurveTo(mx - 4, -25, mx, my); ctx.stroke();
+  ctx.fillStyle = verlauf(-30, 0, ["#5cc94a", "#2f8a2f"]);
+  ctx.beginPath(); ctx.ellipse(mx - 10, -16, 11, 5, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(mx + 10, -26, 11, 5, -0.5, 0, Math.PI * 2); ctx.fill();
+  // Blütenblätter
+  for (let i = 0; i < 8; i++) {
+    const w = (i / 8) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(mx + Math.cos(w) * 12, my + Math.sin(w) * 12);
+    ctx.rotate(w);
+    ctx.fillStyle = verlauf(-8, 8, [hell, dunkel]);
+    ctx.beginPath(); ctx.ellipse(0, 0, 11, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // Mitte
+  const mitte = ctx.createRadialGradient(mx - 3, my - 3, 1, mx, my, 10);
+  mitte.addColorStop(0, "#ffe680"); mitte.addColorStop(1, "#b5651d");
+  ctx.fillStyle = mitte;
+  ctx.beginPath(); ctx.arc(mx, my, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(90,45,10,0.6)";
+  for (const [px, py] of [[-3, -2], [3, -3], [0, 3], [4, 2], [-4, 3]]) { ctx.beginPath(); ctx.arc(mx + px, my + py, 1.2, 0, Math.PI * 2); ctx.fill(); }
+}
+
+// Löwe (Füße unten Mitte bei 0,0), schaut nach links zum Spieler. lauf = Beinschwung (-1 bis 1)
+function zeichneLoewe(lauf, lebt) {
+  const fell = "#e9a83c", fellDunkel = "#c7852a", maehne = "#a0521b";
+  // Schwanz mit Quaste
+  ctx.strokeStyle = fellDunkel; ctx.lineWidth = 4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(24, -28); ctx.quadraticCurveTo(38, -30 - lauf * 4, 36, -44); ctx.stroke();
+  ctx.fillStyle = maehne; ctx.beginPath(); ctx.ellipse(36, -46, 4, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+  // Beine (hinten dunkler)
+  const bein = (x, w, farbe) => {
+    ctx.strokeStyle = farbe; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(x, -18); ctx.lineTo(x + w * 7, -3); ctx.stroke();
+    ctx.fillStyle = farbe; ctx.beginPath(); ctx.ellipse(x + w * 7 - 1, -3, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  bein(-12, -lauf, fellDunkel); bein(18, lauf, fellDunkel);
+  // Körper
+  ctx.fillStyle = verlauf(-38, -10, [mischen(fell, 0.2), fell, fellDunkel]);
+  ctx.beginPath(); ctx.ellipse(4, -25, 24, 13, 0, 0, Math.PI * 2); ctx.fill();
+  bein(-8, lauf, fell); bein(22, -lauf, fell);
+  // Mähne (zackiger Kreis)
+  ctx.fillStyle = maehne;
+  ctx.beginPath();
+  for (let i = 0; i <= 16; i++) {
+    const w = (i / 16) * Math.PI * 2, r = i % 2 ? 13 : 18;
+    ctx.lineTo(-18 + Math.cos(w) * r, -34 + Math.sin(w) * r);
+  }
+  ctx.fill();
+  // Ohren und Gesicht
+  ctx.fillStyle = fell;
+  ctx.beginPath(); ctx.arc(-26, -45, 4, 0, Math.PI * 2); ctx.arc(-12, -46, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = verlauf(-44, -22, ["#f7cf7a", fell]);
+  ctx.beginPath(); ctx.arc(-20, -33, 10.5, 0, Math.PI * 2); ctx.fill();
+  // Schnauze
+  ctx.fillStyle = "#fbe3b0";
+  ctx.beginPath(); ctx.ellipse(-24, -28, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a2410";
+  ctx.beginPath(); ctx.moveTo(-28, -31); ctx.lineTo(-23, -31); ctx.lineTo(-25.5, -28); ctx.fill();
+  ctx.strokeStyle = "#4a2410"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-25.5, -28); ctx.lineTo(-25.5, -26); ctx.moveTo(-29, -25); ctx.quadraticCurveTo(-25.5, -23, -22, -25); ctx.stroke();
+  // Augen (böse, schauen nach links)
+  if (lebt) {
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-25, -37, 3, 0, Math.PI * 2); ctx.arc(-17, -37, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#222";
+    ctx.beginPath(); ctx.arc(-26, -37, 1.6, 0, Math.PI * 2); ctx.arc(-18, -37, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#4a2410"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-29, -42); ctx.lineTo(-23, -40); ctx.moveTo(-13, -42); ctx.lineTo(-19, -40); ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 1.6;
+    for (const ax of [-25, -17]) {
+      ctx.beginPath(); ctx.moveTo(ax - 2.5, -39.5); ctx.lineTo(ax + 2.5, -34.5); ctx.moveTo(ax + 2.5, -39.5); ctx.lineTo(ax - 2.5, -34.5); ctx.stroke();
+    }
+  }
+}
+
+// Kleine Palme (links unten bei 0,0): gebogener Stamm, grüne Wedel, Kokosnüsse
+function zeichnePalme() {
+  // Stamm aus Ringen
+  for (let i = 0; i < 6; i++) {
+    const y = -6 - i * 6.5, x = 20 + Math.sin(i * 0.35) * 3;
+    ctx.fillStyle = i % 2 ? "#a8743a" : "#8a5a2b";
+    ctx.beginPath(); ctx.ellipse(x, y, 5.5 - i * 0.3, 4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const kx = 22, ky = -42;
+  // Wedel
+  const wedel = [[-1, -0.35], [-1, 0.25], [1, -0.35], [1, 0.25], [0.1, -1]];
+  for (const [dx, dy] of wedel) {
+    ctx.save(); ctx.translate(kx, ky); ctx.rotate(Math.atan2(dy, dx));
+    ctx.fillStyle = verlauf(-6, 6, ["#5fd16a", "#23823a"]);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(12, -8, 24, 4); ctx.quadraticCurveTo(12, 2, 0, 0); ctx.fill();
+    ctx.restore();
+  }
+  // Kokosnüsse
+  ctx.fillStyle = "#5a3416";
+  for (const [x, y] of [[19, -39], [25, -38], [22, -35]]) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+}
+
+// Dschungel-Hintergrund (Streifen): hohe Bäume mit dicken Blättern und Lianen
+function zeichneDschungel(B) {
+  for (let i = 0; i < 7; i++) {
+    // nicht zu nah am Rand, sonst werden die Kronen am Streifenende abgeschnitten
+    const x = 80 + i * (B / 8) + ((i * 41) % 30), gross = 0.8 + ((i * 37) % 10) / 20;
+    ctx.save(); ctx.translate(x, 0); ctx.scale(gross, gross);
+    ctx.fillStyle = "#5b3d22";
+    ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-4, -120); ctx.lineTo(4, -120); ctx.lineTo(7, 0); ctx.fill();
+    const krone = [[0, -130, 30], [-30, -118, 22], [30, -120, 24], [-14, -150, 22], [16, -148, 22]];
+    ctx.fillStyle = "#1d5e2e";
+    ctx.beginPath(); for (const [kx, ky, r] of krone) { ctx.moveTo(kx + r, ky + 4); ctx.arc(kx, ky + 4, r, 0, Math.PI * 2); } ctx.fill();
+    ctx.fillStyle = verlauf(-175, -95, ["#3fa34d", "#24713a"]);
+    ctx.beginPath(); for (const [kx, ky, r] of krone) { ctx.moveTo(kx + r, ky); ctx.arc(kx, ky, r, 0, Math.PI * 2); } ctx.fill();
+    // Lianen
+    ctx.strokeStyle = "#2f7a32"; ctx.lineWidth = 2;
+    for (const lx of [-24, 8, 28]) {
+      ctx.beginPath(); ctx.moveTo(lx, -112); ctx.quadraticCurveTo(lx + 6, -80, lx - 2, -50 - (i % 3) * 10); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 // Herbst-Busch (links unten bei 0,0): rund, rot-orange Blätter, ein paar Beeren
 function zeichneBusch() {
   const teile = [[12, -16, 13], [27, -24, 16], [42, -15, 12], [26, -12, 15]];
@@ -900,6 +1029,13 @@ function alleBilderMalen(szene) {
   textur(szene, "abgrund", EINSTELLUNGEN.abgrundBreite + 20, 432, 10, 12, zeichneAbgrund, 1.5);
   textur(szene, "sonne", 200, 200, 100, 100, zeichneSonne, 1.5);
   textur(szene, "busch", 60, 46, 2, 42, zeichneBusch);
+  textur(szene, "palme", 54, 64, 4, 60, zeichnePalme);
+  for (let i = 0; i < MONSTER_BILDER; i++) {
+    textur(szene, "loewe" + i, 84, 70, 42, 62, () => zeichneLoewe(Math.sin((i / MONSTER_BILDER) * Math.PI * 2), true));
+  }
+  textur(szene, "loeweUm", 84, 70, 42, 62, () => zeichneLoewe(0, false));
+  textur(szene, "dschungelbaeume", 960, 260, 0, 252, () => zeichneDschungel(960), 1.5);
+  for (let n = 0; n < 4; n++) textur(szene, "blume" + n, 68, 104, 4, 100, () => zeichneGrosseBlume(n));
   textur(szene, "schwertGlanz", 110, 110, 55, 55, () => {
     const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 52);
     g.addColorStop(0, "rgba(255,250,200,0.95)"); g.addColorStop(0.4, "rgba(255,220,90,0.5)"); g.addColorStop(1, "rgba(255,210,60,0)");
@@ -1016,6 +1152,7 @@ function szeneBauen(szene) {
   G.blumen = streifen(szene, "blumen", 970, BODEN, 7, 1);
   G.sonne = bild(szene, "sonne").setScrollFactor(0, 0).setDepth(0.5).setVisible(false);
   G.herbstbaeume = streifen(szene, "herbstbaeume", 900, BODEN + 2, 3.5, 0.6);
+  G.dschungelbaeume = streifen(szene, "dschungelbaeume", 960, BODEN + 2, 3.5, 0.6);
   G.blaetter = [];
   const blattFarben = [0xe85d04, 0xffb703, 0xd00000, 0xf4a261];
   for (let i = 0; i < 26; i++) G.blaetter.push(bild(szene, "blatt").setScrollFactor(0, 1).setDepth(8).setTint(blattFarben[i % 4]).setVisible(false));
@@ -1078,12 +1215,14 @@ function levelAufbauen(szene, LV, L) {
       : k.hotdog ? bild(szene, "hotdog", k.x, BODEN).setDepth(20)
       : k.baum ? bild(szene, "baum", k.x, BODEN).setDepth(20)
       : k.busch ? bild(szene, "busch", k.x, BODEN).setDepth(20)
+      : k.palme ? bild(szene, "palme", k.x, BODEN).setDepth(20)
+      : k.blume !== undefined ? bild(szene, "blume" + k.blume, k.x, BODEN).setDepth(20)
       : k.rohr ? bild(szene, "rohr", k.x, BODEN).setDepth(20)
       : bild(szene, "kiste", k.x, BODEN).setDepth(20));
     k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale((1.1 * k.b) / 44 / TS, 1 / TS));
   }
   for (const m of LV.monster) {
-    m._bild = neu(bild(szene, "monster0", m.x, m.flug ? m.y : BODEN).setDepth(21));
+    m._bild = neu(bild(szene, m.loewe ? "loewe0" : "monster0", m.x, m.flug ? m.y : BODEN).setDepth(21));
     m._schatten = neu(bild(szene, "schatten", m.x, BODEN + 1).setDepth(19));
     if (m.flug) m._fluegel = [neu(bild(szene, "fluegel").setDepth(20.9)), neu(bild(szene, "fluegel").setDepth(20.9).setFlipX(true).setOrigin(1 - ANKER.fluegel.x, ANKER.fluegel.y))];
   }
@@ -1151,6 +1290,8 @@ function malen(szene) {
   else G.blumen.bilder.forEach((b) => b.setVisible(false));
   if (L.herbst) streifenMalen(G.herbstbaeume, kamera, "herbstbaeume");
   else G.herbstbaeume.bilder.forEach((b) => b.setVisible(false));
+  if (L.dschungel) streifenMalen(G.dschungelbaeume, kamera, "dschungelbaeume");
+  else G.dschungelbaeume.bilder.forEach((b) => b.setVisible(false));
 
   // Wolken (bewegen sich langsamer = sieht weit weg aus)
   G.wolken.forEach((w, i) => {
@@ -1219,10 +1360,10 @@ function malen(szene) {
     }
     if (m.reingefallen) m._bild.y = BODEN + m.umfallen * m.umfallen * 500; // fällt in den Abgrund
     if (m.lebt) {
-      m._bild.setTexture("monster" + lauf);
+      m._bild.setTexture((m.loewe ? "loewe" : "monster") + (m.loewe ? (lauf * 2) % MONSTER_BILDER : lauf)); // Löwen rennen schneller
     } else {
       // umfallen: nach hinten kippen und verschwinden
-      m._bild.setTexture("monsterUm");
+      m._bild.setTexture(m.loewe ? "loeweUm" : "monsterUm");
       m._bild.setAlpha(Math.max(0, 1 - m.umfallen / 1.2));
       m._bild.setRotation(Math.min(1, m.umfallen * 3) * Math.PI / 2);
     }
