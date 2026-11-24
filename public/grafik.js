@@ -50,9 +50,17 @@ function textur(szene, key, w, h, ax, ay, mal, ts = TS) {
   ctx.scale(ts, ts);
   ctx.translate(ax, ay);
   mal();
-  if (szene.textures.exists(key)) szene.textures.remove(key);
+  // Altes Bild merken: Wer es noch benutzt, bekommt gleich das neue.
+  // (Sonst zeigt ein Bild ins Leere und das Spiel stürzt ab – schwarzer Bildschirm.)
+  const alt = szene.textures.exists(key) ? szene.textures.get(key) : null;
+  if (alt) szene.textures.remove(key);
   szene.textures.addCanvas(key, c);
   ANKER[key] = { x: ax / w, y: ay / h, ts };
+  if (alt && szene.children) {
+    for (const o of szene.children.list) {
+      if (o.texture === alt && o.setTexture) o.setTexture(key);
+    }
+  }
 }
 function bild(szene, key, x = 0, y = 0) {
   const a = ANKER[key];
@@ -186,13 +194,27 @@ function zeichneJunge(lauf, inLuft, fig = figur(), mitSchwert = false) {
 
 // Wenn man ein Schwert hat, steht der vordere Arm so (Hand bei x 9, y -30 = am Schwertgriff)
 const SCHWERT_ARM = Math.asin(1 / 3);
-// Alle Bilder vom Jungen (für die gerade gewählte Figur) malen: einmal normal, einmal mit Schwert in der Hand
+// Alle Bilder vom Jungen (für die gerade gewählte Figur) malen.
+// Die Bilder mit Schwert in der Hand kommen erst dazu, wenn man ein Schwert hat (spart Speicher).
+let jungeSDa = false;
+function jungeBilder(szene, vorne, mitSchwert) {
+  for (let i = 0; i < LAUF_BILDER; i++) {
+    textur(szene, vorne + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false, figur(), mitSchwert));
+  }
+  textur(szene, vorne + "Luft", 70, 92, 35, 84, () => zeichneJunge(0, true, figur(), mitSchwert));
+}
+function jungeSMalen(szene) {
+  jungeBilder(szene, "jungeS", true);
+  jungeSDa = true;
+}
 function jungeMalen(szene) {
-  for (const [vorne, mitSchwert] of [["junge", false], ["jungeS", true]]) {
-    for (let i = 0; i < LAUF_BILDER; i++) {
-      textur(szene, vorne + i, 70, 92, 35, 84, () => zeichneJunge((i / LAUF_BILDER) * Math.PI * 2, false, figur(), mitSchwert));
-    }
-    textur(szene, vorne + "Luft", 70, 92, 35, 84, () => zeichneJunge(0, true, figur(), mitSchwert));
+  jungeBilder(szene, "junge", false);
+  // alte Schwert-Bilder (von der vorigen Figur) weg; sie werden bei Bedarf neu gemalt
+  if (jungeSDa) {
+    if (G.junge && G.junge.texture.key.startsWith("jungeS")) G.junge.setTexture("jungeLuft");
+    for (let i = 0; i < LAUF_BILDER; i++) szene.textures.remove("jungeS" + i);
+    szene.textures.remove("jungeSLuft");
+    jungeSDa = false;
   }
   // Faust, die über dem Schwertgriff liegt (sieht aus, als ob er ihn festhält)
   const haut = Object.assign({}, EINSTELLUNGEN.farben, figur().farben || {}).haut;
@@ -1081,7 +1103,21 @@ function alleBilderMalen(szene) {
   textur(szene, "muenzeHud", 32, 32, 16, 16, () => { ctx.scale(1.25, 1.25); zeichneMuenze(); });
 
   // Für jedes Level: Himmel, Berge, Hügel, Gras, Erde (in den Farben vom Level)
-  EINSTELLUNGEN.level.forEach((L, n) => {
+  levelBilderMalen(szene, 0);
+  textur(szene, "blumen", 970, 24, 0, 16, zeichneBlumen, 2);
+}
+
+// Himmel, Berge, Hügel, Gras und Erde gibt es nur für das Level, das gerade dran ist.
+// Die vom vorigen Level werden weggeworfen (sonst wird es auf dem Tablet zu viel Speicher).
+const LEVEL_TEILE = ["himmel", "berge", "huegel", "gras", "erde"];
+let levelBilderNr = -1;
+let altesLevelBilderNr = -1;
+function levelBilderMalen(szene, n) {
+  if (levelBilderNr === n) return;
+  if (levelBilderNr >= 0) altesLevelBilderNr = levelBilderNr;
+  levelBilderNr = n;
+  const L = EINSTELLUNGEN.level[n];
+  {
     textur(szene, "himmel" + n, 4, 256, 0, 0, () => {
       ctx.fillStyle = verlauf(0, 256, [mischen(L.himmel, -0.18), L.himmel, mischen(L.himmel, 0.45)]);
       ctx.fillRect(0, 0, 4, 256);
@@ -1097,8 +1133,13 @@ function alleBilderMalen(szene) {
     }
     textur(szene, "gras" + n, 240, 36, 0, 10, () => zeichneGras(240, L), 2);
     textur(szene, "erde" + n, 300, 72, 0, 0, () => zeichneErde(300, L), 2);
-  });
-  textur(szene, "blumen", 970, 24, 0, 16, zeichneBlumen, 2);
+  }
+}
+// Wird am Ende von malen() aufgerufen: dann zeigt kein Bild mehr die alten Level-Bilder
+function alteLevelBilderWeg(szene) {
+  if (altesLevelBilderNr < 0 || altesLevelBilderNr === levelBilderNr) return;
+  for (const teil of LEVEL_TEILE) szene.textures.remove(teil + altesLevelBilderNr);
+  altesLevelBilderNr = -1;
 }
 
 // =====================================================================
@@ -1250,6 +1291,7 @@ function levelAufbauen(szene, LV, L) {
 }
 
 function hintergrundFarben(n, L) {
+  levelBilderMalen(G.szene, n);
   G.himmel.setTexture("himmel" + n);
   G.erdeFlaeche.setFillStyle(farbeZahl(L.erde));
   const a = farbeAlpha(L.wolken);
@@ -1285,6 +1327,7 @@ function malen(szene) {
   streifenMalen(G.huegel, kamera, "huegel" + n);
   streifenMalen(G.erde, kamera, "erde" + n);
   streifenMalen(G.gras, kamera, "gras" + n);
+  alteLevelBilderWeg(szene);   // jetzt benutzt kein Bild mehr die Bilder vom vorigen Level
   G.erdeFlaeche.setSize(W, hoehe);
   if (L.blumen) streifenMalen(G.blumen, kamera, "blumen");
   else G.blumen.bilder.forEach((b) => b.setVisible(false));
@@ -1424,6 +1467,7 @@ function malen(szene) {
     ? b.setOrigin(0.5, 0.5).setPosition(jx, spiel.y - 38).setRotation(dreh)
     : b.setOrigin(ANKER.jungeLuft.x, ANKER.jungeLuft.y).setPosition(jx, spiel.y).setRotation(0);
   drehen(G.junge.setVisible(!blinkt));
+  if (spiel.schwert && !jungeSDa) jungeSMalen(szene);      // Schwert-Bilder erst jetzt malen
   const jungeBild = spiel.schwert ? "jungeS" : "junge";   // mit Schwert: Arm hält still
   if (!spiel.amBoden) G.junge.setTexture(jungeBild + "Luft");
   else {
@@ -1582,7 +1626,8 @@ async function grafikStarten() {
   } catch (e) { /* egal, dann eben Ersatzschrift */ }
   groesseAnpassen();
   // Bilder so fein malen, wie es der Bildschirm braucht (2 bis 4)
-  TS = Math.min(4, Math.max(2, Math.ceil(skala)));
+  // (höchstens 3: feiner sieht man kaum, braucht aber fast doppelt so viel Speicher)
+  TS = Math.min(3, Math.max(2, Math.ceil(skala)));
   // WebGL = Grafikkarte (schnell). Nur wenn das Gerät das nicht kann, ohne.
   let webgl = false;
   try { webgl = !!document.createElement("canvas").getContext("webgl"); } catch (e) { webgl = false; }
@@ -1600,5 +1645,12 @@ async function grafikStarten() {
     scene: SpielSzene,
   });
   window.addEventListener("resize", groesseAnpassen);
+  // Wenn dem Gerät der Grafikspeicher ausgeht, wird das Bild schwarz ("WebGL verloren").
+  // Dann zeigen wir einen Hinweis: Antippen lädt das Spiel neu.
+  canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    if (spiel && !spiel.fertig) spiel.angehalten = true;
+    document.getElementById("grafikWeg").classList.remove("versteckt");
+  });
 }
 grafikStarten();

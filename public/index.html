@@ -57,6 +57,15 @@
     <button class="klein-knopf" id="entwicklerZurueck">Zurück</button>
   </div>
 
+  <!-- Wenn das Bild schwarz wird (Grafikspeicher voll): Hinweis und neu laden -->
+  <div id="grafikWeg" class="schicht versteckt">
+    <h1 class="titel-mittel">Ups! Das Bild ist weg 🙈</h1>
+    <p>Dein Gerät braucht kurz eine Pause.</p>
+    <div class="knoepfe">
+      <button class="gross" onclick="location.reload()">Neu starten 🔄</button>
+    </div>
+  </div>
+
   <!-- Matheaufgabe -->
   <div id="aufgabe" class="schicht versteckt">
     <p class="frage" id="frage"></p>
