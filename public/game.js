@@ -50,6 +50,12 @@ const EINSTELLUNGEN = {
   pflanzenMuenzen: 20,    // Münzen weg, wenn dich die fleischfressende Pflanze beißt (Herbst)
   pflanzenHoehe: 100,     // so weit kommt die Pflanze aus dem Rohr raus
   pflanzenTakt: 3.2,      // nach so vielen Sekunden kommt die Pflanze wieder raus
+  // Endboss oben auf dem Vulkan (Drachen-Level)
+  endbossSchlaege: 50,    // so viele Schwerthiebe braucht man, bis der Endboss besiegt ist
+  endbossKlotzMuenzen: 1000, // Münzen weg, wenn dich ein Mathe-Klotz trifft (die Rüstung hilft da nicht!)
+  endbossWurfTakt: 3.2,   // alle so viele Sekunden wirft der Endboss einen Klotz
+  endbossMuenzen: 200,    // Münzen, wenn du den Endboss besiegst
+  vulkanHoehe: 150,       // so hoch ist der Vulkan
   // Die Level: Jedes ist schneller und hat mehr Monster.
   // tempo = wie schnell du läufst, monsterTempo = wie schnell die Monster laufen,
   // monster = wie viele Monster (0 = keine, 1 = viele, 2 = ganz viele)
@@ -62,6 +68,7 @@ const EINSTELLUNGEN = {
   // dschungel: true = Dschungel mit kleinen Palmen und Löwen (statt Monstern), die auf dich zurennen
   // grosseBlumen: true = riesige Blumen statt Kisten (drüberspringen!)
   // herbst: true = Herbstbäume im Hintergrund, Büsche und Rohre mit fleischfressender Pflanze
+  // drachenLevel: true = Burg am Anfang, Drachenstatuen zum Drüberspringen, am Ende ein Vulkan mit dem Endboss
   // drachen = wie viele Drachen im Level kommen
   // berge, huegel = Farben der Berge und Hügel im Hintergrund
   level: [
@@ -90,6 +97,9 @@ const EINSTELLUNGEN = {
       monsterAufgabe: true, monsterWarten: true,
       himmel: "#86cfdc", boden: "#3fae49", erde: "#6b4a2b", wolken: "rgba(255,255,255,0.7)",
       berge: "#2f7d4a", huegel: "#45a052" },
+    { name: "Drachen", tempo: 300, monsterTempo: 60, monster: 0.7, drachen: 15, drachenLevel: true,
+      himmel: "#7a5a78", boden: "#7d6e66", erde: "#4a3a34", wolken: "rgba(90,70,80,0.7)",
+      berge: "#4b3550", huegel: "#6e4a46" },
   ],
   farben: {
     // Spielfigur
@@ -143,6 +153,10 @@ function levelBauen(L) {
   const gewitter = [];
   const abgruende = [];
   const pflanzen = [];
+  // Drachen-Level: am Ende ein Vulkan. Man läuft ihn hoch, oben wartet der Endboss.
+  const vulkan = L.drachenLevel ? { fuss: laenge - 2400, hang: 800, hoehe: EINSTELLUNGEN.vulkanHoehe } : null;
+  const ende = vulkan ? vulkan.fuss - 300 : laenge - 400;   // bis hier stehen Kisten, Monster usw.
+  if (vulkan) fragen.forEach((f, i) => { f.x = ((vulkan.fuss - 600) * (i + 1)) / (fragen.length + 1); });
 
   let x = 700;
   let n = 0;
@@ -166,7 +180,7 @@ function levelBauen(L) {
       x += 330 + ((n * 137) % 220);
     }
   }
-  while ((L.abgruende || L.herbst) && x < laenge - 400) {
+  while ((L.abgruende || L.herbst) && x < ende) {
     // Sonnen-Level: kleine Bäume und Abgründe. Herbst-Level: Büsche und Rohre mit Pflanze.
     // Dazwischen ab und zu ein Monster oder Münzen.
     if (!nahAnFrage(x)) {
@@ -194,7 +208,7 @@ function levelBauen(L) {
     n++;
     x += 380 + ((n * 137) % 260);
   }
-  while (!L.fliegen && !L.abgruende && !L.herbst && x < laenge - 400) {
+  while (!L.fliegen && !L.abgruende && !L.herbst && x < ende) {
     if (!nahAnFrage(x)) {
       if (n % 2 === 0) {
         // Kiste mit Münzbogen darüber
@@ -202,6 +216,7 @@ function levelBauen(L) {
         else if (L.hotdogs) kisten.push({ x, b: 104, h: 48, rand: 6, hotdog: true }); // Riesen-Hotdog
         else if (L.dschungel) kisten.push({ x, b: 40, h: 50, rand: 8, palme: true }); // kleine Palme
         else if (L.grosseBlumen) kisten.push({ x, b: 57, h: 90, rand: 10, blume: (n / 2) % 4 }); // große Blume
+        else if (L.drachenLevel) kisten.push({ x, b: 50, h: 70, rand: 9, statue: true }); // Drachenstatue
         else kisten.push({ x, b: 44, h: 44 });
         // ab "monster" über 1: manchmal noch ein Monster hinter der Kiste
         if (zufallFest(n + 100) < L.monster - 1) monster.push({ x: x + 230, b: 40, h: 38, lebt: true, umfallen: 0 });
@@ -225,15 +240,17 @@ function levelBauen(L) {
   const drachen = [];
   // gleichmäßig verteilt; wenn ein Drache kurz vor einem ?-Block käme, kommt er erst danach
   const D = L.drachen || 0;
+  const drachenStrecke = vulkan ? vulkan.fuss - 900 : laenge;  // am Vulkan kommen keine Drachen mehr
   for (let i = 0; i < D; i++) {
-    let start = (laenge * (i + 1)) / (D + 1);
+    let start = (drachenStrecke * (i + 1)) / (D + 1);
     for (const f of fragen) if (start > f.x - 1400 && start < f.x + 200) start = f.x + 250;
     drachen.push({ start, zustand: "wartet" });
   }
   // Schwert zum Finden: steckt in einer freien Stelle im Boden (alles drumherum wird weggeräumt)
   let schwertFund = null;
-  if (L.schwertLiegt) {
-    let sx = laenge * 0.3;
+  // (Im Drachen-Level liegt eins vor dem Vulkan – aber nur für den, der noch keins hat.)
+  if (L.schwertLiegt || vulkan) {
+    let sx = vulkan ? vulkan.fuss - 200 : laenge * 0.3;
     if (nahAnFrage(sx)) sx += 320;
     const frei = (o) => Math.abs((o.x + (o.b || 0) / 2) - sx) > 160;
     kisten.splice(0, kisten.length, ...kisten.filter(frei));
@@ -241,7 +258,24 @@ function levelBauen(L) {
     muenzen.splice(0, muenzen.length, ...muenzen.filter((m) => Math.abs(m.x - sx) > 60));
     schwertFund = { x: sx, weg: false };
   }
-  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, abgruende, pflanzen, schwertFund, ziel: laenge };
+  // Vulkan: Münzen den Hang hoch, oben der Endboss, dahinter das Ziel
+  let boss = null, ziel = laenge;
+  if (vulkan) {
+    const LV = { vulkan };
+    for (let mx = vulkan.fuss + 60; mx < vulkan.fuss + vulkan.hang; mx += 70) muenzen.push({ x: mx, y: bodenBei(LV, mx) - 40, weg: false });
+    boss = { x: vulkan.fuss + vulkan.hang + 900, halb: 70, leben: EINSTELLUNGEN.endbossSchlaege,
+      wurfZeit: 2, wirft: 0, getroffen: 0, klotz: null, besiegt: false, fall: 0 };
+    ziel = boss.x + 600;
+  }
+  return { laenge, kisten, muenzen, monster, fragen, drachen, gewitter, abgruende, pflanzen, schwertFund, vulkan, boss, ziel };
+}
+
+// Wo der Boden ist (überall gleich hoch, nur am Vulkan geht es bergauf)
+function bodenBei(LV, x) {
+  const v = LV && LV.vulkan;
+  if (!v || x <= v.fuss) return BODEN;
+  const t = Math.min(1, (x - v.fuss) / v.hang);
+  return BODEN - v.hoehe * (1 - Math.cos(t * Math.PI)) / 2;
 }
 
 // ---------- Figuren: welche man hat und welche gerade spielt (merkt sich das Gerät) ----------
@@ -319,7 +353,7 @@ function loslassen() {
 // Schwert schwingen (nur wenn man eins hat)
 function hauen() {
   if (!spiel || !spiel.schwert || spiel.pause || spiel.angehalten || spiel.fertig) return;
-  if (spiel.hauZeit <= 0) spiel.hauZeit = 0.35;
+  if (spiel.hauZeit <= 0) { spiel.hauZeit = 0.35; spiel.hauNeu = true; }
 }
 const schwertKnopf = document.getElementById("schwertknopf");
 schwertKnopf.addEventListener("pointerdown", (e) => { e.preventDefault(); hauen(); });
@@ -514,11 +548,12 @@ function aufgabeZeigen(drache = false, a = aufgabeMachen(), trefferWeg = 0, mons
   const dieses = spiel;
   dieses.pause = true;
   // monster: "monster" oder "loewe" (Aufgabe nach dem Berühren), sonst false
-  const loewe = monster === "loewe";
-  document.getElementById("frage").textContent = (drache ? "🐉 " : loewe ? "🦁 " : monster ? "👾 " : "") + `${a.text} = ?`;
+  const loewe = monster === "loewe", klotz = monster === "klotz";
+  document.getElementById("frage").textContent = (drache ? "🐉 " : loewe ? "🦁 " : klotz ? "🪨 " : monster ? "👾 " : "") + `${a.text} = ?`;
   const meldung = document.getElementById("meldung");
   const wer = loewe ? "Ein Löwe hat dich gefangen!" : "Autsch, ein Monster!";
   meldung.textContent = drache ? `Getroffen! −${trefferWeg} Münzen 💥`
+    : klotz ? `Der Mathe-Klotz hat dich getroffen! −${trefferWeg} Münzen 💥`
     : monster ? (trefferWeg ? `${wer} −${trefferWeg} ${trefferWeg === 1 ? "Münze" : "Münzen"}` : `${loewe ? "Ein Löwe" : "Ein Monster"}! Deine Rüstung schützt dich 🛡️`) : "";
   const box = document.getElementById("antworten");
   box.innerHTML = "";
@@ -568,7 +603,10 @@ function aktualisieren(dt) {
   schwertKnopf.classList.toggle("versteckt", !spiel || !spiel.schwert || spiel.fertig || imLaden);
   if (!spiel || spiel.pause || spiel.angehalten || spiel.fertig) return;
   const s = spiel;
-  if (!s.faellt) s.x += s.L.tempo * dt;   // wer in den Abgrund fällt, läuft nicht mehr weiter
+  // wer in den Abgrund fällt, läuft nicht mehr weiter; rueck = wird gerade vom Endboss zurückgeschubst
+  if (!s.faellt) s.x += (s.L.tempo - (s.rueck || 0)) * dt;
+  if (s.rueck > 0) s.rueck = Math.max(0, s.rueck - 1500 * dt);
+  const boden = bodenBei(s.level, s.x);
   if (s.L.fliegen) {
     // Raketen-Rucksack: drücken = hoch, loslassen = langsam runter
     const E = EINSTELLUNGEN;
@@ -588,7 +626,7 @@ function aktualisieren(dt) {
     s.vy += schwerkraft * dt;
     s.y += s.vy * dt;
     // Abgrund: steht man mit dem ganzen Körper drüber, gibt es keinen Boden mehr
-    if (s.y >= BODEN && !s.faellt && s.level.abgruende.some((g) => s.x > g.x + 14 && s.x < g.x + g.b - 14)) {
+    if (s.y >= boden && !s.faellt && s.level.abgruende.some((g) => s.x > g.x + 14 && s.x < g.x + g.b - 14)) {
       s.faellt = true;
       s.amBoden = false;
     }
@@ -600,7 +638,7 @@ function aktualisieren(dt) {
         effekt("level", 0, 0);
         return;
       }
-    } else if (s.y >= BODEN) { s.y = BODEN; s.vy = 0; s.amBoden = true; s.saltoGemacht = false; s.saltoZeit = 0; }
+    } else if (s.y >= boden) { s.y = boden; s.vy = 0; s.amBoden = true; s.saltoGemacht = false; s.saltoZeit = 0; }
   }
   if (s.autschZeit > 0) s.autschZeit -= dt;
   if (s.hauZeit > 0) s.hauZeit -= dt;
@@ -776,6 +814,72 @@ function aktualisieren(dt) {
       if (d.sx > W + 120) d.zustand = "weg";
     }
   }
+  // Endboss oben auf dem Vulkan: wirft Mathe-Klötze und lässt dich nicht vorbei.
+  // Nur mit 50 Schwerthieben ist er besiegt.
+  const B = s.level.boss;
+  if (B && !B.besiegt) {
+    const bBoden = bodenBei(s.level, B.x);
+    if (B.getroffen > 0) B.getroffen -= dt;
+    if (B.wirft > 0) B.wirft -= dt;
+    const aktiv = B.x - s.x < W - MANN_X + 40;   // erst wenn man ihn sieht
+    if (aktiv && !B.klotz) {
+      B.wurfZeit -= dt;
+      if (B.wurfZeit <= 0.8 && B.wirft <= 0) B.wirft = 1.1;    // Arme hoch: gleich kommt ein Klotz!
+      if (B.wurfZeit <= 0) {
+        B.wurfZeit = EINSTELLUNGEN.endbossWurfTakt;
+        // Klotz fliegt aus den Händen, plumpst vor dem Endboss auf den Boden und rollt auf dich zu
+        B.klotz = { aufgabe: aufgabeMachen(), x: B.x - 90, y: bBoden - 230, vy: -150, vx: -320 };
+      }
+    }
+    const k = B.klotz;
+    if (k) {
+      k.vy += 1400 * dt;
+      k.x += k.vx * dt;
+      k.y += k.vy * dt;
+      const kb = bodenBei(s.level, k.x) - 24;
+      if (k.y > kb) { k.y = kb; k.vy = 0; }
+      // Trifft der Klotz dich? (Drüberspringen = ausgewichen)
+      if (rechts > k.x - 30 && links < k.x + 30 && s.y > k.y - 22 && oben < k.y + 22) {
+        B.klotz = null;
+        const weg = Math.min(s.muenzen, EINSTELLUNGEN.endbossKlotzMuenzen);
+        s.muenzen -= weg;
+        s.autschZeit = 1;
+        effekt("drache", k.x, k.y);
+        s.texte.push({ text: weg ? `Klotz! −${weg}` : "Klotz!", x: s.x, y: s.y - 100, zeit: 1.5 });
+        aufgabeZeigen(false, k.aufgabe, weg, "klotz");
+        return;
+      }
+      if (k.x < s.x - W) B.klotz = null;   // weit hinter dir: weg damit
+    }
+    // Schwerthieb: jeder neue Schlag in seiner Nähe zählt einmal
+    const vorne = B.x - B.halb;
+    if (s.hauZeit > 0 && s.hauNeu && rechts + 55 > vorne) {
+      s.hauNeu = false;
+      B.leben--;
+      B.getroffen = 0.15;
+      s.rueck = 700;
+      effekt("monster", vorne + 10, s.y - 50);
+      if (B.leben <= 0) {
+        B.besiegt = true;
+        B.klotz = null;
+        effekt("drache", B.x, bBoden - 150);
+        s.muenzen += EINSTELLUNGEN.endbossMuenzen;
+        s.texte.push({ text: `+${EINSTELLUNGEN.endbossMuenzen} Endboss besiegt! 🏆`, x: B.x - 120, y: bBoden - 200, zeit: 3 });
+      } else {
+        s.texte.push({ text: `+0 Zack! Noch ${B.leben}`, x: vorne - 10, y: s.y - 110, zeit: 0.8 });
+      }
+    }
+    // Vorbei kommst du nicht: wer reinläuft, wird zurückgeschubst
+    if (!B.besiegt && rechts > vorne) {
+      s.x = vorne - 15;
+      if (!(s.rueck > 0)) {
+        s.rueck = 600;
+        s.texte.push({ text: s.schwert ? "+0 Hau zu! ⚔️" : "+0 Bumm!", x: s.x, y: s.y - 100, zeit: 0.8 });
+      }
+    }
+  }
+  if (B && B.besiegt) B.fall += dt;
+
   // ?-Blöcke hängen in der Luft: Man muss hochspringen und sie mit dem Kopf berühren
   for (const f of s.level.fragen) {
     if (f.fertig) continue;

@@ -376,6 +376,267 @@ function zeichneDrache(schlag) {
   ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(14, -38 - schlag * 26); ctx.lineTo(30, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 
+// Endboss: halb Drache, halb Monster, rot und lila, ohne Schnauze, böse (Füße unten Mitte bei 0,0), schaut nach links.
+// arme = wie hoch die Arme sind (0 = unten, 1 = hoch zum Werfen). Gemalt in Größe 1, im Spiel groß.
+function zeichneEndboss(arme) {
+  const lila = "#7d3c98", lilaHell = "#a55bc9", lilaDunkel = "#4a1a63";
+  const rot = "#d62828", rotDunkel = "#7a0e0e";
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  // Flügel hinten (rot, wie bei einer Fledermaus)
+  const fluegel = (sx, hoch) => {
+    ctx.fillStyle = verlauf(-230, -90, [rot, rotDunkel]);
+    ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(20, -125);
+    ctx.lineTo(20 + sx * 45, -215 - hoch);
+    ctx.lineTo(20 + sx * 110, -190 - hoch);
+    ctx.quadraticCurveTo(20 + sx * 90, -160, 20 + sx * 110, -140);
+    ctx.quadraticCurveTo(20 + sx * 78, -132, 20 + sx * 85, -108);
+    ctx.quadraticCurveTo(20 + sx * 50, -115, 30, -95);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(50,0,0,0.55)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(20, -125); ctx.lineTo(20 + sx * 110, -190 - hoch); ctx.moveTo(20, -125); ctx.lineTo(20 + sx * 110, -140); ctx.stroke();
+    // Kralle oben am Flügel
+    ctx.fillStyle = "#fff3c4";
+    ctx.beginPath(); ctx.moveTo(20 + sx * 45, -215 - hoch); ctx.lineTo(20 + sx * 40, -228 - hoch); ctx.lineTo(20 + sx * 52, -214 - hoch); ctx.fill();
+  };
+  fluegel(1, 0); fluegel(-0.55, 10);
+  // Schwanz mit Stacheln und Spitze
+  ctx.fillStyle = rot; ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(45, -55); ctx.quadraticCurveTo(105, -40, 122, -72); ctx.lineTo(114, -45); ctx.quadraticCurveTo(95, -12, 45, -25); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#2a0d0d";
+  ctx.beginPath(); ctx.moveTo(122, -72); ctx.lineTo(138, -82); ctx.lineTo(128, -58); ctx.closePath(); ctx.fill();
+  for (const [x, y] of [[70, -46], [88, -48], [104, -56]]) { ctx.beginPath(); ctx.moveTo(x - 5, y); ctx.lineTo(x, y - 11); ctx.lineTo(x + 5, y); ctx.fill(); }
+  // Beine mit schwarzen Krallen
+  for (const bx of [-22, 30]) {
+    ctx.fillStyle = lilaDunkel;
+    ctx.beginPath(); ctx.roundRect(bx - 15, -34, 30, 32, 8); ctx.fill();
+    ctx.fillStyle = "#1a0a1f";
+    for (const k of [-11, 0, 11]) { ctx.beginPath(); ctx.moveTo(bx + k - 4, -3); ctx.lineTo(bx + k - 9, 3); ctx.lineTo(bx + k + 2, -1); ctx.fill(); }
+  }
+  // Körper: großes lila Monster
+  ctx.fillStyle = verlauf(-175, -20, [lilaHell, lila, lilaDunkel]);
+  ctx.beginPath(); ctx.moveTo(-58, -25); ctx.lineTo(-58, -115); ctx.arc(5, -115, 63, Math.PI, 0); ctx.lineTo(68, -25); ctx.quadraticCurveTo(5, -10, -58, -25); ctx.fill();
+  ctx.strokeStyle = lilaDunkel; ctx.lineWidth = 3; ctx.stroke();
+  // roter Bauch mit Drachen-Streifen
+  ctx.fillStyle = verlauf(-90, -25, ["#e05252", rot]);
+  ctx.beginPath(); ctx.ellipse(2, -55, 34, 30, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = rotDunkel; ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-26 + i * 3, -70 + i * 14); ctx.quadraticCurveTo(2, -64 + i * 14, 30 - i * 3, -70 + i * 14); ctx.stroke(); }
+  // rote Zacken auf Rücken und Kopf
+  ctx.fillStyle = rot; ctx.strokeStyle = rotDunkel; ctx.lineWidth = 2;
+  for (let i = 0; i < 7; i++) {
+    const w = Math.PI * (1.12 + i * 0.12), x = 5 + Math.cos(w) * 63, y = -115 + Math.sin(w) * 63;
+    ctx.beginPath(); ctx.moveTo(x - 8, y + 3); ctx.lineTo(x + Math.cos(w) * 20, y + Math.sin(w) * 20); ctx.lineTo(x + 8, y + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // große schwarze Hörner
+  ctx.fillStyle = verlauf(-225, -160, ["#555", "#111"]); ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-36, -160); ctx.quadraticCurveTo(-70, -185, -58, -222); ctx.quadraticCurveTo(-46, -190, -18, -172); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(22, -172); ctx.quadraticCurveTo(26, -205, 50, -222); ctx.quadraticCurveTo(38, -195, 40, -166); ctx.fill(); ctx.stroke();
+  // dunkler Schatten über den Augen
+  ctx.fillStyle = "rgba(40,0,50,0.45)";
+  ctx.beginPath(); ctx.ellipse(-16, -150, 40, 18, 0, 0, Math.PI * 2); ctx.fill();
+  // böse leuchtende Augen (gelb-rot, schmale Pupille)
+  for (const [ax, ay] of [[-32, -148], [2, -150]]) {
+    ctx.fillStyle = "rgba(255,60,0,0.35)"; ctx.beginPath(); ctx.arc(ax, ay, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = verlauf(ay - 10, ay + 10, ["#fff36b", "#ff7b00"]);
+    ctx.beginPath(); ctx.moveTo(ax - 13, ay - 4); ctx.quadraticCurveTo(ax, ay - 12, ax + 13, ay - 2); ctx.quadraticCurveTo(ax, ay + 12, ax - 13, ay - 4); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.ellipse(ax - 3, ay, 2.2, 7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // dicke böse Augenbrauen (V-Form)
+  ctx.strokeStyle = "#1a0a1f"; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.moveTo(-50, -168); ctx.lineTo(-18, -155); ctx.moveTo(-12, -156); ctx.lineTo(20, -170); ctx.stroke();
+  // großes Maul mit spitzen Zähnen (keine Schnauze)
+  ctx.fillStyle = "#2a0505"; ctx.strokeStyle = rotDunkel; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-50, -126); ctx.quadraticCurveTo(-16, -116, 20, -128); ctx.quadraticCurveTo(14, -96, -16, -94); ctx.quadraticCurveTo(-44, -96, -50, -126); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#e0303a"; // Zunge
+  ctx.beginPath(); ctx.ellipse(-16, -101, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff";
+  for (let i = 0; i < 6; i++) { // obere Zähne
+    const x = -44 + i * 11, y = -124 + Math.abs(i - 2.5) * 1.2;
+    ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x, y + (i === 0 || i === 5 ? 15 : 9)); ctx.lineTo(x + 4, y); ctx.fill();
+  }
+  for (let i = 0; i < 5; i++) { // untere Zähne
+    const x = -38 + i * 11, y = -97;
+    ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x, y - 8); ctx.lineTo(x + 4, y); ctx.fill();
+  }
+  // Arme mit Krallen (hoch zum Werfen oder unten)
+  for (const [sx, sy] of [[-52, -90], [56, -90]]) {
+    const r = sx < 0 ? -1 : 1, ex = sx + r * 16, ey = sy - 18 - arme * 72;
+    ctx.strokeStyle = lilaDunkel; ctx.lineWidth = 18;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.fillStyle = lila; ctx.beginPath(); ctx.arc(ex, ey, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#1a0a1f";
+    for (const k of [-1, 0, 1]) {
+      const w = -Math.PI / 2 + k * 0.6 + (arme > 0.5 ? 0 : Math.PI);
+      const kx = ex + Math.cos(w) * 10, ky = ey + Math.sin(w) * 10;
+      ctx.beginPath(); ctx.moveTo(kx - 3, ky); ctx.lineTo(ex + Math.cos(w) * 22, ey + Math.sin(w) * 22); ctx.lineTo(kx + 3, ky); ctx.fill();
+    }
+  }
+}
+// Großer Steinklotz, den der Endboss wirft (Mitte bei 0,0; die Aufgabe steht als Text darauf)
+function zeichneKlotz() {
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath(); ctx.roundRect(-44, -30, 92, 66, 10); ctx.fill();
+  ctx.fillStyle = verlauf(-34, 34, ["#b9b2a8", "#8d857a", "#6b645b"]);
+  ctx.beginPath(); ctx.roundRect(-46, -34, 92, 66, 10); ctx.fill();
+  ctx.strokeStyle = "#4e4740"; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = "rgba(60,50,40,0.5)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-40, -10); ctx.lineTo(-30, -4); ctx.lineTo(-34, 8); ctx.moveTo(30, 20); ctx.lineTo(38, 10); ctx.lineTo(44, 14); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath(); ctx.roundRect(-40, -30, 40, 8, 4); ctx.fill();
+}
+
+// Drachenstatue aus Stein (links unten bei 0,0): Sockel und ein sitzender Drache, schaut nach links
+function zeichneStatue() {
+  const stein = "#9a948e", hell = "#c4beb6", dunkel = "#5e5954";
+  // Sockel
+  ctx.fillStyle = verlauf(-18, 0, [hell, dunkel]);
+  ctx.beginPath(); ctx.roundRect(2, -18, 50, 18, 3); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(2, -6, 50, 6);
+  ctx.strokeStyle = dunkel; ctx.lineWidth = 1.5; ctx.strokeRect(5, -15, 44, 10);
+  ctx.save(); ctx.translate(27, -18);
+  ctx.fillStyle = verlauf(-56, 0, [hell, stein, dunkel]);
+  ctx.strokeStyle = dunkel; ctx.lineWidth = 2;
+  // Schwanz um den Sockel
+  ctx.beginPath(); ctx.moveTo(10, -4); ctx.quadraticCurveTo(26, -2, 22, -16); ctx.lineTo(18, -14); ctx.quadraticCurveTo(20, -6, 6, -8); ctx.fill();
+  // Flügel (zusammengefaltet, nach oben)
+  ctx.beginPath(); ctx.moveTo(2, -30); ctx.lineTo(16, -58); ctx.lineTo(20, -40); ctx.lineTo(14, -24); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Körper (sitzt)
+  ctx.beginPath(); ctx.ellipse(2, -16, 14, 16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // Hals und Kopf
+  ctx.beginPath(); ctx.moveTo(-6, -26); ctx.quadraticCurveTo(-10, -40, -6, -46); ctx.lineTo(4, -44); ctx.quadraticCurveTo(2, -34, 6, -26); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-2, -52); ctx.lineTo(-20, -48); ctx.quadraticCurveTo(-24, -44, -19, -41); ctx.lineTo(-2, -40); ctx.quadraticCurveTo(6, -46, -2, -52); ctx.fill(); ctx.stroke();
+  // Hörner, Auge
+  ctx.fillStyle = dunkel;
+  ctx.beginPath(); ctx.moveTo(0, -51); ctx.lineTo(6, -60); ctx.lineTo(4, -49); ctx.fill();
+  ctx.beginPath(); ctx.arc(-8, -47, 1.8, 0, Math.PI * 2); ctx.fill();
+  // Vorderbeine
+  ctx.fillStyle = stein;
+  ctx.beginPath(); ctx.roundRect(-10, -12, 7, 12, 2); ctx.fill(); ctx.stroke();
+  // Licht oben
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath(); ctx.ellipse(-2, -24, 5, 8, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Die Drachenburg (links unten bei 0,0): Türme, Mauer, Tor und rote Fahnen
+function zeichneBurg() {
+  const stein = "#77707c", hell = "#9a93a0", dunkel = "#4a4450", dach = "#a3202a";
+  const mauer = (x, y, b, h) => {
+    ctx.fillStyle = verlauf(y, y + h, [hell, stein, dunkel]);
+    ctx.fillRect(x, y, b, h);
+    // Steinreihen
+    ctx.strokeStyle = "rgba(40,30,50,0.35)"; ctx.lineWidth = 1.5;
+    for (let yy = y + 14, r = 0; yy < y + h; yy += 14, r++) {
+      ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + b, yy); ctx.stroke();
+      for (let xx = x + (r % 2 ? 10 : 22); xx < x + b; xx += 24) { ctx.beginPath(); ctx.moveTo(xx, yy - 14); ctx.lineTo(xx, yy); ctx.stroke(); }
+    }
+    // Zinnen
+    ctx.fillStyle = hell;
+    for (let xx = x; xx < x + b - 4; xx += 16) ctx.fillRect(xx, y - 10, 10, 10);
+  };
+  const fenster = (x, y) => {
+    ctx.fillStyle = "#2a1c22"; ctx.beginPath(); ctx.moveTo(x - 6, y + 14); ctx.lineTo(x - 6, y); ctx.arc(x, y, 6, Math.PI, 0); ctx.lineTo(x + 6, y + 14); ctx.fill();
+    ctx.fillStyle = "rgba(255,150,40,0.85)"; ctx.fillRect(x - 3, y + 2, 6, 10);
+  };
+  const turm = (x, b, h) => {
+    mauer(x, -h, b, h);
+    ctx.fillStyle = verlauf(-h - 70, -h, ["#d33a44", dach]);
+    ctx.beginPath(); ctx.moveTo(x - 8, -h - 10); ctx.lineTo(x + b / 2, -h - 80); ctx.lineTo(x + b + 8, -h - 10); ctx.closePath(); ctx.fill();
+    // Fahne oben
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + b / 2, -h - 80); ctx.lineTo(x + b / 2, -h - 108); ctx.stroke();
+    ctx.fillStyle = "#d62828";
+    ctx.beginPath(); ctx.moveTo(x + b / 2, -h - 108); ctx.quadraticCurveTo(x + b / 2 - 14, -h - 104, x + b / 2 - 26, -h - 100); ctx.lineTo(x + b / 2, -h - 92); ctx.fill();
+    fenster(x + b / 2, -h + 40);
+    fenster(x + b / 2, -h + 100);
+  };
+  mauer(70, -150, 320, 150);
+  turm(10, 90, 220);
+  turm(370, 90, 220);
+  turm(185, 90, 270);
+  // Tor
+  ctx.fillStyle = "#1e1418";
+  ctx.beginPath(); ctx.moveTo(195, 0); ctx.lineTo(195, -70); ctx.arc(230, -70, 35, Math.PI, 0); ctx.lineTo(265, 0); ctx.fill();
+  ctx.strokeStyle = "#5a5058"; ctx.lineWidth = 3;
+  for (let xx = 203; xx < 265; xx += 12) { ctx.beginPath(); ctx.moveTo(xx, -95); ctx.lineTo(xx, -30); ctx.stroke(); }
+  for (let yy = -88; yy < -30; yy += 14) { ctx.beginPath(); ctx.moveTo(197, yy); ctx.lineTo(263, yy); ctx.stroke(); }
+  // große rote Banner mit gelbem Drachen-Auge
+  for (const bx of [110, 320]) {
+    ctx.fillStyle = "#b0182a";
+    ctx.beginPath(); ctx.moveTo(bx - 16, -130); ctx.lineTo(bx + 16, -130); ctx.lineTo(bx + 16, -60); ctx.lineTo(bx, -70); ctx.lineTo(bx - 16, -60); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffd23f";
+    ctx.beginPath(); ctx.ellipse(bx, -102, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.ellipse(bx, -102, 2, 6, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// Vulkan-Gestein (Füllung von oben y nach unten)
+function vulkanStein(punkte, unten) {
+  ctx.fillStyle = verlauf(-160, unten, ["#5e4a44", "#3e302c", "#241a18"]);
+  ctx.beginPath(); ctx.moveTo(punkte[0][0], unten);
+  for (const [x, y] of punkte) ctx.lineTo(x, y);
+  ctx.lineTo(punkte[punkte.length - 1][0], unten); ctx.closePath(); ctx.fill();
+  // heller Rand oben
+  ctx.strokeStyle = "#7d6a62"; ctx.lineWidth = 5;
+  ctx.beginPath(); punkte.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + 2) : ctx.moveTo(x, y + 2))); ctx.stroke();
+}
+// Der Hang vom Vulkan (Boden bei 0, oben bei -hoehe; links unten bei 0,0)
+function zeichneVulkanHang(B, hoehe) {
+  const punkte = [];
+  for (let x = 0; x <= B; x += 8) punkte.push([x, -hoehe * (1 - Math.cos((x / B) * Math.PI)) / 2]);
+  vulkanStein(punkte, 200);
+  // Lava fließt den Hang runter
+  for (const [start, breite] of [[B * 0.9, 9], [B * 0.62, 6]]) {
+    ctx.strokeStyle = "rgba(255,90,0,0.5)"; ctx.lineWidth = breite + 6; ctx.lineCap = "round";
+    const lava = () => {
+      ctx.beginPath();
+      for (let x = start, i = 0; x > start - 260; x -= 10, i++) {
+        const y = -hoehe * (1 - Math.cos((x / B) * Math.PI)) / 2 + 8 + i * 1.6 + Math.sin(i * 0.8) * 3;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    };
+    lava();
+    ctx.strokeStyle = "#ffb000"; ctx.lineWidth = breite; lava();
+  }
+  // Steine
+  ctx.fillStyle = "rgba(20,10,10,0.35)";
+  for (let i = 0; i < 18; i++) {
+    const x = 30 + ((i * 97) % (B - 60)), y = -hoehe * (1 - Math.cos((x / B) * Math.PI)) / 2 + 30 + ((i * 53) % 140);
+    ctx.beginPath(); ctx.ellipse(x, y, 6 + (i % 3) * 3, 4 + (i % 2) * 2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+// Oben auf dem Vulkan (ein Stück, das sich wiederholt): flach, mit glühenden Rissen
+function zeichneVulkanOben(B) {
+  vulkanStein([[0, 0], [B, 0]], 350);
+  ctx.strokeStyle = "rgba(255,90,0,0.45)"; ctx.lineWidth = 7; ctx.lineCap = "round";
+  const risse = [[40, 20, 90, 60, 70, 110], [230, 30, 270, 80, 250, 140], [330, 15, 300, 50, 340, 90]];
+  for (const glut of [false, true]) {
+    if (glut) { ctx.strokeStyle = "#ffb000"; ctx.lineWidth = 3; }
+    for (const [a, b, c, d, e, f] of risse) { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.lineTo(e, f); ctx.stroke(); }
+  }
+}
+// Leuchten aus dem Krater hinter dem Endboss
+function zeichneLavaGlut() {
+  const g = ctx.createRadialGradient(0, 0, 10, 0, 0, 200);
+  g.addColorStop(0, "rgba(255,200,60,0.9)"); g.addColorStop(0.35, "rgba(255,90,0,0.55)"); g.addColorStop(1, "rgba(255,40,0,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 200, 200, 0, 0, Math.PI * 2); ctx.fill();
+}
+// Großer Vulkan ganz hinten am Himmel (unten Mitte bei 0,0), mit Rauch
+function zeichneFernerVulkan() {
+  ctx.fillStyle = verlauf(-220, 0, ["#4a3040", "#3a2632"]);
+  ctx.beginPath(); ctx.moveTo(-260, 0); ctx.lineTo(-50, -210); ctx.lineTo(50, -210); ctx.lineTo(260, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgba(255,120,20,0.9)";
+  ctx.beginPath(); ctx.ellipse(0, -210, 50, 8, 0, 0, Math.PI * 2); ctx.fill();
+  const glut = ctx.createRadialGradient(0, -212, 5, 0, -212, 90);
+  glut.addColorStop(0, "rgba(255,150,40,0.7)"); glut.addColorStop(1, "rgba(255,80,0,0)");
+  ctx.fillStyle = glut; ctx.beginPath(); ctx.arc(0, -212, 90, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(70,55,65,0.6)";
+  for (const [x, y, r] of [[0, -240, 30], [-20, -275, 38], [15, -315, 46], [-10, -360, 52]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+}
+
 // Feuerkugel (die Aufgabe steht als Text darüber)
 function zeichneKugel() {
   // Feuerschweif
@@ -1107,6 +1368,23 @@ function alleBilderMalen(szene) {
   textur(szene, "blumen", 970, 24, 0, 16, zeichneBlumen, 2);
 }
 
+// Bilder fürs Drachen-Level (Burg, Statuen, Vulkan, Endboss) – erst malen, wenn man dort ankommt
+let drachenBilderDa = false;
+function drachenBilderMalen(szene) {
+  if (drachenBilderDa) return;
+  drachenBilderDa = true;
+  const v = EINSTELLUNGEN.vulkanHoehe;
+  textur(szene, "statue", 58, 82, 2, 78, zeichneStatue);
+  textur(szene, "burg", 470, 400, 5, 392, zeichneBurg, 2);
+  textur(szene, "vulkanHang", 800, v + 210, 0, v + 6, () => zeichneVulkanHang(800, v), 1.5);
+  textur(szene, "vulkanOben", 400, 356, 0, 6, () => zeichneVulkanOben(400), 1.5);
+  textur(szene, "lavaGlut", 400, 400, 200, 200, zeichneLavaGlut, 1);
+  textur(szene, "fernerVulkan", 540, 420, 270, 412, zeichneFernerVulkan, 1.5);
+  textur(szene, "endboss", 250, 248, 105, 238, () => zeichneEndboss(0));
+  textur(szene, "endbossWurf", 250, 248, 105, 238, () => zeichneEndboss(1));
+  textur(szene, "klotz", 100, 76, 50, 40, zeichneKlotz);
+}
+
 // Himmel, Berge, Hügel, Gras und Erde gibt es nur für das Level, das gerade dran ist.
 // Die vom vorigen Level werden weggeworfen (sonst wird es auf dem Tablet zu viel Speicher).
 const LEVEL_TEILE = ["himmel", "berge", "huegel", "gras", "erde"];
@@ -1192,6 +1470,8 @@ function szeneBauen(szene) {
   G.gras = streifen(szene, "gras0", 240, BODEN, 6, 1);
   G.blumen = streifen(szene, "blumen", 970, BODEN, 7, 1);
   G.sonne = bild(szene, "sonne").setScrollFactor(0, 0).setDepth(0.5).setVisible(false);
+  G.fernerVulkan = null;   // kommt erst im Drachen-Level dazu
+  G.kamY = 0;              // so weit schaut die Kamera nach oben (am Vulkan)
   G.herbstbaeume = streifen(szene, "herbstbaeume", 900, BODEN + 2, 3.5, 0.6);
   G.dschungelbaeume = streifen(szene, "dschungelbaeume", 960, BODEN + 2, 3.5, 0.6);
   G.blaetter = [];
@@ -1250,6 +1530,28 @@ function levelAufbauen(szene, LV, L) {
   if (G.welt) G.welt.forEach((o) => o.destroy());
   G.welt = [];
   const neu = (o) => { G.welt.push(o); return o; };
+  if (L.drachenLevel) {
+    drachenBilderMalen(szene);
+    if (!G.fernerVulkan) G.fernerVulkan = bild(szene, "fernerVulkan").setScrollFactor(0, 1).setDepth(0.6);
+    // Die Burg: du läufst aus ihrem Tor heraus
+    G.burg = neu(bild(szene, "burg", -235, BODEN).setDepth(8));
+  } else G.burg = null;
+  G.vulkan = [];
+  if (LV.vulkan) {
+    const v = LV.vulkan;
+    G.vulkan.push({ x: v.fuss, b: v.hang, o: neu(bild(szene, "vulkanHang", v.fuss, BODEN).setDepth(7.6)) });
+    for (let x = v.fuss + v.hang, i = 0; x < LV.ziel + 1600; x += 400, i++) {
+      G.vulkan.push({ x, b: 400, o: neu(bild(szene, "vulkanOben", x - 1, BODEN - v.hoehe).setDepth(7.6).setFlipX(i % 2 === 1).setScale(401 / 400 / ANKER.vulkanOben.ts, 1 / ANKER.vulkanOben.ts)) });
+    }
+  }
+  if (LV.boss) {
+    const B = LV.boss, by = bodenBei(LV, B.x);
+    G.lavaGlut = neu(bild(szene, "lavaGlut", B.x + 40, by - 20).setDepth(7.4));
+    G.boss = neu(bild(szene, "endboss", B.x, by).setDepth(25).setScale(1.3 / ANKER.endboss.ts));
+    G.bossSchatten = neu(bild(szene, "schatten", B.x + 10, by + 1).setDepth(19).setScale(5 / TS, 2 / TS));
+    G.klotz = neu(bild(szene, "klotz").setDepth(41).setScale(0.7 / ANKER.klotz.ts));
+    G.klotzText = neu(szene.add.text(0, 0, "", textStil(20, "#fff", 5)).setOrigin(0.5).setDepth(42));
+  } else G.boss = null;
   for (const k of LV.kisten) {
     k._bild = neu(L.schneemaenner
       ? bild(szene, "schneemann", k.x + k.b / 2, BODEN).setDepth(20)
@@ -1259,6 +1561,7 @@ function levelAufbauen(szene, LV, L) {
       : k.palme ? bild(szene, "palme", k.x, BODEN).setDepth(20)
       : k.blume !== undefined ? bild(szene, "blume" + k.blume, k.x, BODEN).setDepth(20)
       : k.rohr ? bild(szene, "rohr", k.x, BODEN).setDepth(20)
+      : k.statue ? bild(szene, "statue", k.x, BODEN).setDepth(20)
       : bild(szene, "kiste", k.x, BODEN).setDepth(20));
     k._schatten = neu(bild(szene, "schatten", k.x + k.b / 2, BODEN + 1).setDepth(19).setScale((1.1 * k.b) / 44 / TS, 1 / TS));
   }
@@ -1278,7 +1581,7 @@ function levelAufbauen(szene, LV, L) {
     LV.schwertFund._glanz = neu(bild(szene, "schwertGlanz", LV.schwertFund.x, BODEN - 30).setDepth(21.5));
     LV.schwertFund._bild = neu(bild(szene, "schwert", LV.schwertFund.x, BODEN - 40).setDepth(21.6).setRotation(Math.PI));
   }
-  G.fahne = neu(bild(szene, "fahne", LV.ziel, BODEN).setDepth(18));
+  G.fahne = neu(bild(szene, "fahne", LV.ziel, bodenBei(LV, LV.ziel)).setDepth(18));
   G.drachen.forEach((d) => d.destroy());
   G.kugeln.forEach((k) => { k.bild.destroy(); k.text.destroy(); });
   G.drachen = LV.drachen.map(() => bild(szene, "drache0").setDepth(40).setVisible(false));
@@ -1295,7 +1598,7 @@ function hintergrundFarben(n, L) {
   G.himmel.setTexture("himmel" + n);
   G.erdeFlaeche.setFillStyle(farbeZahl(L.erde));
   const a = farbeAlpha(L.wolken);
-  G.wolken.forEach((w) => w.setAlpha(a));
+  G.wolken.forEach((w) => w.setAlpha(a).setTint(L.drachenLevel ? 0x8a7a88 : 0xffffff));
 }
 
 // ---------- Effekte (werden von game.js aufgerufen) ----------
@@ -1316,7 +1619,10 @@ function malen(szene) {
   if (n !== gebauterLevelNr) { gebauterLevelNr = n; hintergrundFarben(n, L); }
   const kamera = spiel ? spiel.x - MANN_X : (performance.now() / 1000) * 60;
   const kam = szene.cameras.main;
-  kam.setScroll(kamera, -obenRand);
+  // Am Vulkan geht es bergauf: die Kamera schaut mit nach oben
+  const kamZiel = spiel ? (BODEN - bodenBei(spiel.level, spiel.x)) * 1.12 : 0;
+  G.kamY = Math.abs(kamZiel - G.kamY) > 200 ? kamZiel : G.kamY + (kamZiel - G.kamY) * 0.12;
+  kam.setScroll(kamera, -obenRand - G.kamY);
   const sx = (welt) => welt - kamera;
   const sichtbar = (x) => sx(x) > -90 && sx(x) < W + 90;
   const hoehe = canvas.height / skala;
@@ -1360,6 +1666,7 @@ function malen(szene) {
     b.setPosition(bx, by).setRotation(Math.sin(t * 2 + i) * 1.2).setScale((1 + (i % 3) * 0.25) / ANKER.blatt.ts);
   });
 
+  if (G.fernerVulkan) G.fernerVulkan.setVisible(!!spiel && !!L.drachenLevel).setPosition(W * 0.72, BODEN - 40);
   const nichtsZeigen = !spiel;
   G.hud.forEach((o) => o.setVisible(!nichtsZeigen));
   G.junge.setVisible(!nichtsZeigen);
@@ -1451,6 +1758,34 @@ function malen(szene) {
   // Sonne oben rechts am Himmel, die Strahlen drehen sich langsam
   G.sonne.setVisible(!!L.sonne);
   if (L.sonne) G.sonne.setPosition(W - 150, 95).setRotation(t * 0.15);
+  if (G.burg) G.burg.setVisible(sichtbar(-235) || sichtbar(235));
+  // Vulkan und Endboss
+  if (G.vulkan) for (const st of G.vulkan) st.o.setVisible(st.x + st.b > kamera - 20 && st.x < kamera + W + 20);
+  const B = LV.boss;
+  if (B && G.boss) {
+    const by = bodenBei(LV, B.x);
+    const v = B.x - kamera < W + 220 && B.fall < 2;
+    G.boss.setVisible(v); G.bossSchatten.setVisible(v && !B.besiegt); G.lavaGlut.setVisible(B.x - kamera < W + 260);
+    G.lavaGlut.setAlpha(0.65 + Math.sin(t * 3) * 0.25);
+    if (v) {
+      const key = B.wirft > 0 ? "endbossWurf" : "endboss";
+      if (G.boss.texture.key !== key) G.boss.setTexture(key);
+      if (B.getroffen > 0) G.boss.setTintFill(0xffffff); else G.boss.clearTint();
+      if (B.besiegt) {
+        // fällt um und verschwindet
+        G.boss.setRotation(Math.min(1, B.fall) * 1.4).setAlpha(Math.max(0, 1 - B.fall / 2)).setPosition(B.x + B.fall * 60, by);
+      } else {
+        G.boss.setRotation(0).setAlpha(1).setPosition(B.x + (B.getroffen > 0 ? 6 : 0), by + Math.sin(t * 2.2) * 3);
+      }
+    }
+    const k = B.klotz;
+    G.klotz.setVisible(!!k); G.klotzText.setVisible(!!k);
+    if (k) {
+      G.klotz.setPosition(k.x, k.y).setRotation(k.vy === 0 ? (k.x / 30) % (Math.PI * 2) : 0);
+      if (G.klotzText.text !== k.aufgabe.text) G.klotzText.setText(k.aufgabe.text);
+      G.klotzText.setPosition(k.x, k.y - 44);
+    }
+  }
   for (const g of LV.gewitter) {
     const v = sichtbar(g.x);
     g._bild.setVisible(v);
@@ -1474,9 +1809,10 @@ function malen(szene) {
     const phase = ((spiel.x / 18) % (Math.PI * 2)) / (Math.PI * 2);
     G.junge.setTexture(jungeBild + (Math.floor(phase * LAUF_BILDER) % LAUF_BILDER));
   }
-  const hochOben = Math.min(1, (BODEN - spiel.y) / 250);
-  G.schatten.setPosition(jx, BODEN + 1).setScale((1 - hochOben * 0.6) / TS).setAlpha(1 - hochOben * 0.5);
-  if (spiel.amBoden && !warAmBoden && !spiel.pause) G.staub.explode(7, jx, BODEN);
+  const jBoden = bodenBei(LV, jx);
+  const hochOben = Math.min(1, (jBoden - spiel.y) / 250);
+  G.schatten.setPosition(jx, jBoden + 1).setScale((1 - hochOben * 0.6) / TS).setAlpha(1 - hochOben * 0.5);
+  if (spiel.amBoden && !warAmBoden && !spiel.pause) G.staub.explode(7, jx, jBoden);
   warAmBoden = spiel.amBoden;
 
   if (L.fliegen && !blinkt) {
@@ -1556,22 +1892,26 @@ function malen(szene) {
     G.hudBox.fillRoundedRect(12, 12, boxB, 44, 22);
   }
   const balkenB = Math.min(300, W - 300), balkenX = (W - balkenB) / 2;
-  const anteil = Math.min(1, spiel.x / spiel.level.ziel);
+  // Beim Endboss zeigt der Balken oben, wie viele Schläge er noch aushält
+  const boss = spiel.level.boss;
+  const bossKampf = boss && !boss.besiegt && boss.x - spiel.x < W;
+  const anteil = bossKampf ? boss.leben / EINSTELLUNGEN.endbossSchlaege : Math.min(1, spiel.x / spiel.level.ziel);
   G.balken.clear();
   G.balken.fillStyle(0x1d3557, 0.4);
   G.balken.fillRoundedRect(balkenX - 3, 19, balkenB + 6, 22, 11);
   G.balken.fillStyle(0xffffff, 0.6);
   G.balken.fillRoundedRect(balkenX, 22, balkenB, 16, 8);
-  if (anteil > 0.02) {
-    G.balken.fillStyle(0xe63946, 1);
+  if (anteil > 0.02 || bossKampf) {
+    G.balken.fillStyle(bossKampf ? 0x8e44ad : 0xe63946, 1);
     G.balken.fillRoundedRect(balkenX, 22, Math.max(16, balkenB * anteil), 16, 8);
     G.balken.fillStyle(0xffffff, 0.3);
     G.balken.fillRoundedRect(balkenX + 4, 24, Math.max(8, balkenB * anteil - 8), 5, 2.5);
   }
   const levelText = `Level ${spiel.levelNr + 1}: ${L.name}`;
-  if (G.letzterLevelText !== levelText) {
-    G.letzterLevelText = levelText;
-    G.levelText.setText(levelText);
+  const obenText = bossKampf ? `Endboss: noch ${boss.leben} Schläge` : levelText;
+  if (G.letzterLevelText !== obenText) {
+    G.letzterLevelText = obenText;
+    G.levelText.setText(obenText);
     G.grossText.setText(levelText);
   }
   G.levelText.setPosition(W / 2, 60);
